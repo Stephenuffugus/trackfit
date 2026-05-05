@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { findCombinations, type SolverResult } from "@trackfit/solver";
-import { getSystem, listSystems, type TrackSystem } from "@trackfit/library";
+import { listSystems, type TrackSystem } from "@trackfit/library";
 import { Header } from "./components/Header";
 import { PresetChips } from "./components/PresetChips";
 import { InventoryList } from "./components/InventoryList";
@@ -8,16 +8,19 @@ import { GapCard } from "./components/GapCard";
 import { ResultsList, type ResultsState } from "./components/ResultsList";
 import { PhotoModal } from "./components/PhotoModal";
 import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
-import { useInventory } from "./hooks/useInventory";
+import { Onboarding } from "./components/Onboarding";
+import { UndoToast } from "./components/UndoToast";
+import { useUndoableInventory } from "./hooks/useUndoableInventory";
 import { usePhotoCapture } from "./hooks/usePhotoCapture";
 import {
   clearPersisted,
   loadPersisted,
   usePersistedState,
 } from "./hooks/usePersistedState";
-import { DEFAULT_PRESET_ID, IN_TO_MM } from "./lib/constants";
+import { IN_TO_MM } from "./lib/constants";
 import { formatLength, unitSuffix } from "./lib/format";
 import { matchPresetId, presetToInventory, presetUnit } from "./lib/presets";
+import { isOnboarded, setOnboarded } from "./lib/prefs";
 import type { InventoryRow, Unit } from "./lib/types";
 
 type ModalContext =
@@ -32,23 +35,15 @@ type ModalContext =
  * localStorage at the v0.2 key `trackfit.state.v1`.
  */
 export default function App() {
-  // Initialize from localStorage if present, otherwise default preset.
+  // Initialize from localStorage if present, otherwise an EMPTY inventory.
+  // (v0.3 design choice: don't surprise users by auto-loading a default
+  // preset — let them pick.)
   const initial = useMemo(() => {
     const saved = loadPersisted();
     if (saved) return saved;
-    const sys = getSystem(DEFAULT_PRESET_ID);
-    if (!sys) {
-      return {
-        unit: "in" as Unit,
-        inventory: [] as InventoryRow[],
-        gapPhoto: null as string | null,
-        target: "",
-        tolerance: "0",
-      };
-    }
     return {
-      unit: presetUnit(sys),
-      inventory: presetToInventory(sys),
+      unit: "in" as Unit,
+      inventory: [] as InventoryRow[],
       gapPhoto: null as string | null,
       target: "",
       tolerance: "0",
@@ -81,14 +76,25 @@ export default function App() {
   // Reference-object measurement overlay.
   const [measureOpen, setMeasureOpen] = useState(false);
 
+  // First-run onboarding modal.
+  const [onboardingOpen, setOnboardingOpen] = useState<boolean>(
+    () => !isOnboarded(),
+  );
+
   // Photo capture pipelines — one for inventory rows, one for the gap.
   const rowCapture = usePhotoCapture();
   const gapCapture = usePhotoCapture();
 
-  const { add, remove, updateField, setPhoto } = useInventory(
-    setInventory,
-    unit,
-  );
+  const {
+    add,
+    remove,
+    updateField,
+    setPhoto,
+    resetInventory,
+    undo,
+    toast,
+    clearToast,
+  } = useUndoableInventory(inventory, setInventory, unit);
 
   // Persist on any state change (debounced 250ms inside the hook).
   usePersistedState({ unit, inventory, gapPhoto, target, tolerance });
@@ -101,13 +107,24 @@ export default function App() {
     inventory.some((it) => !!it.photo) || !!gapPhoto;
 
   const loadPreset = (system: TrackSystem, opts?: { skipConfirm?: boolean }) => {
-    if (!opts?.skipConfirm && inventoryHasPhotos()) {
-      const ok = window.confirm(
-        `Loading "${system.name}" will replace your current inventory and any photos you've added. Continue?`,
-      );
-      if (!ok) return;
+    if (!opts?.skipConfirm) {
+      // Always confirm when there's existing inventory — the brief is
+      // explicit: surprising older users by silently replacing what they
+      // built is the cardinal sin. The message wording differs only by
+      // whether photos will be lost.
+      const hasInventory = inventory.length > 0;
+      if (hasInventory) {
+        const message = inventoryHasPhotos()
+          ? `Replace your inventory with ${system.name}? Anything you've added or changed — including photos — will be lost.`
+          : `Replace your inventory with ${system.name}? Anything you've added or changed will be lost.`;
+        const ok = window.confirm(message);
+        if (!ok) return;
+      }
     }
-    setInventory(presetToInventory(system));
+    resetInventory(
+      presetToInventory(system),
+      `Replaced inventory with ${system.name}.`,
+    );
     setGapPhoto(null);
     setUnit(presetUnit(system));
     setActivePresetId(system.id);
@@ -122,9 +139,23 @@ export default function App() {
     clearPersisted();
     setTarget("");
     setTolerance("0");
+    setGapPhoto(null);
     setResults({ kind: "idle" });
-    const sys = getSystem(DEFAULT_PRESET_ID);
-    if (sys) loadPreset(sys, { skipConfirm: true });
+    // Empty the inventory honestly — don't auto-load a default preset.
+    resetInventory([], "Cleared your inventory.");
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* Onboarding                                                         */
+  /* ------------------------------------------------------------------ */
+
+  const handleOnboardingClose = () => {
+    setOnboarded(true);
+    setOnboardingOpen(false);
+  };
+
+  const handleShowIntro = () => {
+    setOnboardingOpen(true);
   };
 
   /* ------------------------------------------------------------------ */
@@ -295,6 +326,7 @@ export default function App() {
           onDelete={remove}
           onAdd={add}
           onReset={handleReset}
+          onShowIntro={handleShowIntro}
         />
 
         <GapCard
@@ -316,7 +348,7 @@ export default function App() {
           flexCandidates={flexCandidates}
         />
 
-        <footer className="app-footer">TRACKFIT v0.2 · prototype</footer>
+        <footer className="app-footer">TRACKFIT v0.3 · prototype</footer>
       </div>
 
       <PhotoModal
@@ -334,6 +366,17 @@ export default function App() {
         onMeasured={handleMeasured}
         onClose={() => setMeasureOpen(false)}
       />
+
+      <Onboarding open={onboardingOpen} onClose={handleOnboardingClose} />
+
+      {toast ? (
+        <UndoToast
+          toastId={toast.id}
+          message={toast.message}
+          onUndo={undo}
+          onDismiss={clearToast}
+        />
+      ) : null}
 
       {/* Hidden file inputs — single-instance like v0.2, re-routed via the
           usePhotoCapture hooks. */}

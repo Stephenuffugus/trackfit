@@ -1,15 +1,30 @@
-import type { SolverResult } from "@trackfit/solver";
+import type { CurveSolverResult, SolverResult } from "@trackfit/solver";
 import { BAR_COLORS } from "../lib/constants";
 import { unitSuffix } from "../lib/format";
 import type { InventoryRow, Unit } from "../lib/types";
 import { ResultCard } from "./ResultCard";
 
+/**
+ * Results state mirrors v0.2 with one twist: the `result` may be either the
+ * 1D SolverResult (straight gap) or the 2D CurveSolverResult (curved/offset).
+ * The discriminator is `mode`. Both shapes share `solutions`, but only the
+ * curve one carries `bestNearMiss` + a typed `suggestion`.
+ */
 export type ResultsState =
   | { kind: "idle" }
   | { kind: "empty"; targetVal: number }
   | {
       kind: "results";
+      mode: "straight";
       result: SolverResult;
+      target_mm: number;
+      elapsed: string;
+      inventory: InventoryRow[];
+    }
+  | {
+      kind: "results";
+      mode: "curve";
+      result: CurveSolverResult;
       target_mm: number;
       elapsed: string;
       inventory: InventoryRow[];
@@ -27,10 +42,10 @@ interface Props {
 }
 
 /**
- * Render the results section under the gap card. Mirrors v0.2's three modes:
+ * Render the results section under the gap card. Three modes:
  *   - idle: nothing solved yet (omitted entirely)
  *   - empty: target was missing/zero, or no fits and no near-misses
- *   - results: any combination of solutions / bestUnder / bestOver
+ *   - results: any combination of solutions / bestUnder / bestOver / bestNearMiss
  */
 export function ResultsList({ state, unit, flexCandidates }: Props) {
   if (state.kind === "idle") {
@@ -38,9 +53,6 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
   }
 
   if (state.kind === "empty") {
-    // Two flavors share the empty-state look. The first is the v0.2
-    // "Enter a target gap length to solve" message; the second is the
-    // "nothing in your inventory comes close" message.
     if (state.targetVal <= 0) {
       return (
         <section className="results" id="results">
@@ -63,7 +75,7 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
     );
   }
 
-  const { result, target_mm, elapsed, inventory } = state;
+  const { result, target_mm, elapsed, inventory, mode } = state;
 
   // Stable color per piece label across this solve.
   const labelColors: Record<string, string> = {};
@@ -74,14 +86,16 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
     }
   });
 
-  if (result.solutions.length > 0) {
+  const solutions = result.solutions;
+
+  if (solutions.length > 0) {
     return (
       <section className="results" id="results">
         <p className="label">
-          {result.solutions.length} solution
-          {result.solutions.length === 1 ? "" : "s"} · solved in {elapsed}ms
+          {solutions.length} solution
+          {solutions.length === 1 ? "" : "s"} · solved in {elapsed}ms
         </p>
-        {result.solutions.map((sol, i) => (
+        {solutions.map((sol, i) => (
           <ResultCard
             key={i}
             solution={sol}
@@ -96,29 +110,64 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
     );
   }
 
+  // No solutions — fall back to near-miss surface.
+  // 1D path uses bestUnder/bestOver; 2D path uses bestNearMiss + a suggestion.
+  if (mode === "straight") {
+    return (
+      <section className="results" id="results">
+        <p className="label">No exact fit · nearest options</p>
+        {result.bestUnder ? (
+          <ResultCard
+            solution={result.bestUnder}
+            kind="under"
+            unit={unit}
+            target_mm={target_mm}
+            labelColors={labelColors}
+            flexCandidates={flexCandidates}
+          />
+        ) : null}
+        {result.bestOver ? (
+          <ResultCard
+            solution={result.bestOver}
+            kind="over"
+            unit={unit}
+            target_mm={target_mm}
+            labelColors={labelColors}
+            flexCandidates={flexCandidates}
+          />
+        ) : null}
+      </section>
+    );
+  }
+
+  // Curve mode near-miss — surface bestNearMiss + the typed suggestion.
+  if (!result.bestNearMiss) {
+    return (
+      <section className="results" id="results">
+        <p className="label">No combinations found</p>
+        <div className="empty-state">
+          Nothing in your inventory comes close to this gap. Try a different
+          shape or add curves to your box.
+        </div>
+      </section>
+    );
+  }
+  const r_long = result.bestNearMiss.residual.length_mm;
+  // Treat negative residual ("under") as the v0.2 "under" card so the
+  // SUGGESTED missing-piece callout fires; positive ("over") falls through.
+  const nearKind = r_long <= 0 ? "under" : "over";
   return (
     <section className="results" id="results">
       <p className="label">No exact fit · nearest options</p>
-      {result.bestUnder ? (
-        <ResultCard
-          solution={result.bestUnder}
-          kind="under"
-          unit={unit}
-          target_mm={target_mm}
-          labelColors={labelColors}
-          flexCandidates={flexCandidates}
-        />
-      ) : null}
-      {result.bestOver ? (
-        <ResultCard
-          solution={result.bestOver}
-          kind="over"
-          unit={unit}
-          target_mm={target_mm}
-          labelColors={labelColors}
-          flexCandidates={flexCandidates}
-        />
-      ) : null}
+      <ResultCard
+        solution={result.bestNearMiss}
+        kind={nearKind}
+        unit={unit}
+        target_mm={target_mm}
+        labelColors={labelColors}
+        flexCandidates={flexCandidates}
+        curveSuggestion={result.suggestion}
+      />
     </section>
   );
 }

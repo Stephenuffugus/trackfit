@@ -76,11 +76,33 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@25.6.0)(terser@5.46.2)
 
+  packages/layouts:
+    dependencies:
+      '@trackfit/library':
+        specifier: workspace:*
+        version: link:../library
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.6.0)(terser@5.46.2)
+
   packages/library:
     devDependencies:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+
+  packages/marketplace:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.6.0)(terser@5.46.2)
 
   packages/measure:
     devDependencies:

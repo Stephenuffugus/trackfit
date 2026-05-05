@@ -1,10 +1,13 @@
 /**
  * Cross-cutting constants for the Trackfit web app.
  *
- * STORAGE_KEY matches v0.2 exactly so users upgrading from the single-file
- * prototype keep their inventory.
+ * STORAGE_KEY moved to v2 in v0.3 to accommodate the new gap-shape picker
+ * (gap_shape / gap_arc_degrees / gap_offset). The loader migrates a v1 blob
+ * on first read; see hooks/usePersistedState.ts.
  */
-export const STORAGE_KEY = "trackfit.state.v1";
+export const STORAGE_KEY = "trackfit.state.v2";
+/** Older single-length-target schema. Read-once on migration. */
+export const STORAGE_KEY_V1 = "trackfit.state.v1";
 export const IN_TO_MM = 25.4;
 
 export const MAX_PHOTO_DIM = 1200;
@@ -24,3 +27,20 @@ export const BAR_COLORS: string[] = [
 export const DEFAULT_PRESET_ID = "lionel-fastrack";
 /** Default qty to assign to a library piece when loading a preset. */
 export const DEFAULT_PRESET_QTY = 4;
+
+/**
+ * Curve-solver default tolerances. The handoff specifies these as v1 values
+ * not exposed in the UI; "wiggle room" mm is the only knob the user sees and
+ * it remaps to length_mm and lateral_offset_mm equally.
+ */
+export const DEFAULT_CURVE_TOL_LENGTH_MM = 2;
+export const DEFAULT_CURVE_TOL_LATERAL_MM = 2;
+export const DEFAULT_CURVE_TOL_ANGLE_DEG = 0.5;
+
+/** Quick-pick arcs for the curve gap shape. */
+export const CURVE_ARC_PRESETS: { label: string; degrees: number }[] = [
+  { label: "Quarter turn (90°)", degrees: 90 },
+  { label: "Eighth turn (45°)", degrees: 45 },
+  { label: "Twelfth turn (30°)", degrees: 30 },
+  { label: "Sixteenth turn (22.5°)", degrees: 22.5 },
+];

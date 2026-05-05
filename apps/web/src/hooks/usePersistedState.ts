@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { TrackKind } from "@trackfit/library";
-import { STORAGE_KEY } from "../lib/constants";
-import type { InventoryRow, PersistedState } from "../lib/types";
+import { STORAGE_KEY, STORAGE_KEY_V1 } from "../lib/constants";
+import type { GapShape, InventoryRow, PersistedState } from "../lib/types";
 
 /** Mirror of TrackKind, used to validate persisted strings without importing
  *  the library's runtime data. Keep in sync with @trackfit/library. */
@@ -16,6 +16,12 @@ const VALID_KINDS: ReadonlySet<TrackKind> = new Set<TrackKind>([
   "bumper",
   "uncoupler",
   "transition",
+]);
+
+const VALID_GAP_SHAPES: ReadonlySet<GapShape> = new Set<GapShape>([
+  "straight",
+  "curve",
+  "offset",
 ]);
 
 /**
@@ -49,32 +55,68 @@ export function usePersistedState(state: PersistedState): void {
   }, [state]);
 }
 
+/**
+ * Parse a raw object (possibly from v1 or v2) into a PersistedState.
+ * v1 saves carry no gap_shape; we default to "straight" so the user's
+ * previous single-length flow is preserved bit-for-bit.
+ */
+function normalize(parsed: Partial<PersistedState> | null): PersistedState | null {
+  if (!parsed || !Array.isArray(parsed.inventory)) return null;
+  const rawShape = (parsed as { gap_shape?: unknown }).gap_shape;
+  const gap_shape: GapShape =
+    typeof rawShape === "string" && VALID_GAP_SHAPES.has(rawShape as GapShape)
+      ? (rawShape as GapShape)
+      : "straight";
+  return {
+    unit: parsed.unit === "mm" ? "mm" : "in",
+    inventory: parsed.inventory.map((p): InventoryRow => {
+      const rawKind = (p as { kind?: unknown }).kind;
+      const kind =
+        typeof rawKind === "string" && VALID_KINDS.has(rawKind as TrackKind)
+          ? (rawKind as TrackKind)
+          : undefined;
+      const radius = (p as { radius_mm?: unknown }).radius_mm;
+      const arc = (p as { arc_degrees?: unknown }).arc_degrees;
+      const turnoutFrog = (p as { turnout_frog?: unknown }).turnout_frog;
+      const productCode = (p as { product_code?: unknown }).product_code;
+      const row: InventoryRow = {
+        label: String(p.label || ""),
+        length_mm: Number(p.length_mm) || 0,
+        qty: Math.max(0, parseInt(String(p.qty), 10) || 0),
+        photo: p.photo || null,
+      };
+      if (kind) row.kind = kind;
+      if (typeof radius === "number" && radius > 0) row.radius_mm = radius;
+      if (typeof arc === "number" && arc > 0) row.arc_degrees = arc;
+      if (typeof turnoutFrog === "string") row.turnout_frog = turnoutFrog;
+      if (typeof productCode === "string") row.product_code = productCode;
+      return row;
+    }),
+    gapPhoto: parsed.gapPhoto || null,
+    target: parsed.target != null ? String(parsed.target) : "",
+    tolerance: parsed.tolerance != null ? String(parsed.tolerance) : "0",
+    gap_shape,
+    gap_arc_degrees:
+      parsed.gap_arc_degrees != null ? String(parsed.gap_arc_degrees) : "",
+    gap_offset:
+      parsed.gap_offset != null ? String(parsed.gap_offset) : "",
+  };
+}
+
 export function loadPersisted(): PersistedState | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PersistedState> | null;
-    if (!parsed || !Array.isArray(parsed.inventory)) return null;
-    return {
-      unit: parsed.unit === "mm" ? "mm" : "in",
-      inventory: parsed.inventory.map((p): InventoryRow => {
-        const rawKind = (p as { kind?: unknown }).kind;
-        const kind =
-          typeof rawKind === "string" && VALID_KINDS.has(rawKind as TrackKind)
-            ? (rawKind as TrackKind)
-            : undefined;
-        return {
-          label: String(p.label || ""),
-          length_mm: Number(p.length_mm) || 0,
-          qty: Math.max(0, parseInt(String(p.qty), 10) || 0),
-          photo: p.photo || null,
-          ...(kind ? { kind } : {}),
-        };
-      }),
-      gapPhoto: parsed.gapPhoto || null,
-      target: parsed.target != null ? String(parsed.target) : "",
-      tolerance: parsed.tolerance != null ? String(parsed.tolerance) : "0",
-    };
+    // Prefer v2; fall back to migrating v1 (drop the v1 blob once we've
+    // re-saved as v2 — the next write does that automatically).
+    const rawV2 = localStorage.getItem(STORAGE_KEY);
+    if (rawV2) {
+      return normalize(JSON.parse(rawV2) as Partial<PersistedState> | null);
+    }
+    const rawV1 = localStorage.getItem(STORAGE_KEY_V1);
+    if (!rawV1) return null;
+    const migrated = normalize(JSON.parse(rawV1) as Partial<PersistedState> | null);
+    // Don't delete the v1 key here — keep it as a safety net until the user
+    // makes their next edit (the v2 write happens via usePersistedState).
+    return migrated;
   } catch (e) {
     console.warn("Trackfit: could not load persisted state", e);
     return null;
@@ -84,6 +126,7 @@ export function loadPersisted(): PersistedState | null {
 export function clearPersisted(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY_V1);
   } catch {
     /* noop */
   }
