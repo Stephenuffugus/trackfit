@@ -310,8 +310,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .inv-row {
   display: grid;
   /* Delete column is 44px so the icon-btn's enlarged hit area
-     (44x44 per WCAG 2.5.5) isn't clipped. */
-  grid-template-columns: 56px 1fr 100px 64px 44px;
+     (44x44 per WCAG 2.5.5) isn't clipped. The qty column is 140px
+     to fit the [−][input][+] stepper trio (44 + ~52 + 44 = 140);
+     focus-group P1-T2-F2 + P5-T2-F1 — older hands edit ~30 rows by
+     repeatedly summoning the numeric keypad, so we expose explicit
+     stepper buttons and keep the input editable for typed entry. */
+  grid-template-columns: 56px 1fr 100px 140px 44px;
   gap: 8px;
   align-items: center;
   padding: 10px 0;
@@ -323,6 +327,12 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 2px;
   min-width: 0;
 }
+.inv-label-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
 .inv-subscript {
   font:
     500 10px "IBM Plex Mono",
@@ -330,6 +340,67 @@ input[type="number"]::-webkit-inner-spin-button {
   letter-spacing: 0.08em;
   color: var(--ink-soft);
   text-transform: uppercase;
+}
+/* Brand chip — surfaced only when InventoryRow has a known system_id
+   (focus-group P2-T2-F3). Reuses the existing dashed-rule treatment
+   from .inv-empty-filter / .inv-length-readonly so no new tokens. */
+.inv-brand-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font:
+    500 11px "IBM Plex Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  border: 1px dashed var(--rule);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+/* Qty stepper cell — `[−] [input] [+]`, all three converge on the
+   same onChange("qty") handler so the undo wiring is unchanged. */
+.inv-qty-cell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.qty-stepper {
+  flex: 0 0 auto;
+  /* WCAG 2.5.5 / Apple HIG — 44x44 minimum hit target. The visible
+     glyph is small but the padding takes the click region to 44px. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  font:
+    500 18px "IBM Plex Mono",
+    monospace;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.qty-stepper:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+.qty-stepper:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.qty-stepper:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.inv-qty-cell .qty-input {
+  flex: 1 1 0;
+  min-width: 0;
+  /* Match the height of the stepper buttons so the row reads as a
+     single coherent control; the existing input baseline applies. */
+  text-align: center;
 }
 .inv-length-cell {
   display: flex;
@@ -844,6 +915,17 @@ input[type="number"]::-webkit-inner-spin-button {
     sans-serif;
   color: var(--ink);
   line-height: 1.4;
+}
+/* Mixed-brand hint surfaced beneath the marketplace expander when the
+   solver's combo includes pieces from a non-dominant brand (focus-group
+   P2-T2-F3). Quiet styling — informational, not a warning. */
+.suggest-mixed-brand-note {
+  margin: 6px 0 0;
+  font:
+    400 11px "IBM Plex Mono",
+    monospace;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
 }
 
 /* ----- MARKETPLACE LINKS (Where to buy) -----
@@ -1543,12 +1625,14 @@ section.app-section {
     padding: 6px 10px;
   }
   .inv-row {
-    /* 44px for the delete column so the icon-btn's hit area isn't
-       clipped on mobile. */
+    /* Mobile stack: qty gets its own row so the [−][input][+] trio has
+       room to breathe (focus-group P1-T2-F2 + P5-T2-F1). 44px for
+       the delete column so the icon-btn's hit area isn't clipped. */
     grid-template-columns: 48px 1fr 44px;
     grid-template-areas:
       "photo label  delete"
-      "photo length qty";
+      "photo length length"
+      "qty   qty    qty";
     row-gap: 6px;
     padding: 12px 0;
   }
@@ -1567,10 +1651,17 @@ section.app-section {
   }
   .inv-row [data-field="qty"] {
     grid-area: qty;
+    /* Wider on mobile so the steppers + input span comfortably. */
+    width: 100%;
   }
   .inv-row [data-action="delete"] {
     grid-area: delete;
     justify-self: end;
+  }
+  .inv-qty-cell .qty-input {
+    /* On mobile the input takes the rest of the qty row, since the
+       parent flex-row already has fixed-width steppers. */
+    flex: 1 1 auto;
   }
   .inv-head {
     display: none;

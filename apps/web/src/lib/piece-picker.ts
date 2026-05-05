@@ -193,7 +193,7 @@ export function buildPickerSections(opts: {
  */
 export function pieceToInventoryRow(
   p: TrackPiece,
-  _system: TrackSystem,
+  system: TrackSystem,
 ): InventoryRow | null {
   const hasLength =
     typeof p.length_mm === "number" && (p.length_mm as number) > 0;
@@ -226,6 +226,9 @@ export function pieceToInventoryRow(
     qty: baseQty,
     photo: null,
     kind: p.kind,
+    // Stamp the source system so the marketplace expander can route
+    // mixed-brand inventories correctly (focus-group P2-T2-F3).
+    system_id: system.id,
   };
   if (hasCurve) {
     row.radius_mm = p.radius_mm as number;

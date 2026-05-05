@@ -16,8 +16,11 @@ import type { InventoryRow, Unit } from "./types";
  */
 
 /** Round-trip the library piece into an inventory row. Pieces missing usable
- *  geometry are signalled by returning null so the caller can drop them. */
-function pieceToRow(p: TrackPiece): InventoryRow | null {
+ *  geometry are signalled by returning null so the caller can drop them.
+ *  `systemId` is stamped onto the row so the marketplace expander and the
+ *  inferSystemForRows heuristic can attribute the row to its source brand
+ *  even when the user later mixes brands in one inventory. */
+function pieceToRow(p: TrackPiece, systemId: string): InventoryRow | null {
   // For curves we prefer radius_mm × arc as the source of truth and derive
   // the arc length on render; for everything else length_mm is the unit.
   const hasLength =
@@ -51,6 +54,7 @@ function pieceToRow(p: TrackPiece): InventoryRow | null {
     qty: DEFAULT_PRESET_QTY,
     photo: null,
     kind: p.kind,
+    system_id: systemId,
   };
   // Carry through the geometry-bearing fields when present so the solver and
   // the InventoryRow renderer can pick them up without re-reading JSON.
@@ -75,7 +79,7 @@ function pieceToRow(p: TrackPiece): InventoryRow | null {
 
 export function presetToInventory(system: TrackSystem): InventoryRow[] {
   return system.pieces
-    .map(pieceToRow)
+    .map((p) => pieceToRow(p, system.id))
     .filter((r): r is InventoryRow => r !== null);
 }
 
@@ -87,20 +91,47 @@ export function presetUnit(system: TrackSystem): Unit {
  * Heuristic: for a set of inventory pieces (typically the pieces in one
  * solver Solution), find which library system they most likely came from.
  *
- * Match strategy: count how many of each system's piece labels appear in
- * the inventory. Highest match count wins. Ties resolve by the system that
- * appears first in SYSTEM_DISPLAY_ORDER (passed in as `systems`). Returns
- * undefined when nothing matches at all.
+ * Match strategy (focus-group P2-T2-F3 fix):
+ *   1. If any row carries an explicit `system_id`, count those by
+ *      system_id and pick the most-represented one. This is authoritative
+ *      — Margaret's hand-typed Bachmann row sitting next to a preset-loaded
+ *      Atlas inventory must NOT silently inherit Atlas vendor links.
+ *   2. Fallback: count how many of each system's piece labels appear in
+ *      the inventory. Highest match count wins. Ties resolve by the
+ *      system that appears first in SYSTEM_DISPLAY_ORDER (passed in
+ *      as `systems`). Returns undefined when nothing matches at all.
  *
  * Used by the SUGGESTED callout's "Where to buy" panel to seed the
  * marketplace search with a manufacturer hint (e.g. "Märklin"), which
  * sharpens the vendor query and unlocks Reynaulds for European systems.
  */
 export function inferSystemForRows(
-  rows: { label: string }[],
+  rows: { label: string; system_id?: string }[],
   systems: TrackSystem[],
 ): TrackSystem | undefined {
   if (rows.length === 0 || systems.length === 0) return undefined;
+
+  // Priority 1: explicit system_id wins. Tally system_ids that match a
+  // known system in `systems` and pick the most-represented. We respect
+  // SYSTEM_DISPLAY_ORDER on ties by walking `systems` in order.
+  const explicitCounts = new Map<string, number>();
+  for (const r of rows) {
+    if (r.system_id) {
+      explicitCounts.set(r.system_id, (explicitCounts.get(r.system_id) ?? 0) + 1);
+    }
+  }
+  if (explicitCounts.size > 0) {
+    let best: { system: TrackSystem; score: number } | undefined;
+    for (const sys of systems) {
+      const score = explicitCounts.get(sys.id) ?? 0;
+      if (score === 0) continue;
+      if (!best || score > best.score) best = { system: sys, score };
+    }
+    if (best) return best.system;
+  }
+
+  // Priority 2: fall back to the v0.2 label-match heuristic for
+  // hand-typed rows and pre-system_id persisted state.
   const labelSet = new Set(rows.map((r) => r.label));
   let best: { system: TrackSystem; score: number } | undefined;
   for (const sys of systems) {

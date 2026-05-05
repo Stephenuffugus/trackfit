@@ -43,6 +43,17 @@ export interface InventoryRow {
   divergence_degrees?: number | null;
   /** manufacturer SKU when known (passed through from library JSON) */
   product_code?: string | null;
+  /**
+   * Library system this row was sourced from (e.g. "atlas-ho-code-83",
+   * "bachmann-ez-track-ho"). Set whenever the row is loaded from a preset
+   * or picked through the PiecePicker; undefined for hand-typed rows.
+   *
+   * Why optional: focus-group P2-T2-F3 — Margaret keeps Atlas + Bachmann
+   * pieces in one inventory and shouldn't be forced to assign a brand to
+   * every hand-typed row. When set, it's authoritative for inferSystemForRows
+   * and surfaces a small brand chip in the InventoryRow.
+   */
+  system_id?: string;
   /** the solver's InventoryItem accepts arbitrary pass-through metadata */
   [extra: string]: unknown;
 }

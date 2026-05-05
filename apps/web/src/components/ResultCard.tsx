@@ -146,6 +146,17 @@ export function ResultCard({
   // otherwise the most-represented system wins. inferSystemForRows handles
   // both cases.
   const systemHint = buildSystemHint(solution.pieces);
+  // For mixed-brand combos, note how many pieces fall outside the
+  // dominant brand so the user isn't misled when the marketplace panel
+  // surfaces only one vendor list (focus-group P2-T2-F3).
+  const otherBrandCount = otherBrandPieceCount(solution.pieces, systemHint?.id);
+  const otherBrandNote =
+    otherBrandCount > 0 ? (
+      <p className="suggest-mixed-brand-note">
+        ({otherBrandCount} other brand{" "}
+        {otherBrandCount === 1 ? "piece" : "pieces"} in this combo)
+      </p>
+    ) : null;
   let suggestNode: React.ReactNode = null;
   if (kind === "under" && !isCurve) {
     const missing_mm = target_mm - total_mm;
@@ -169,6 +180,7 @@ export function ResultCard({
           missingPiece={{ kind: "straight", length_mm: missing_mm }}
           systemHint={systemHint}
         />
+        {otherBrandNote}
       </div>
     );
   } else if (kind === "under" && isCurve && curveSuggestion) {
@@ -183,6 +195,7 @@ export function ResultCard({
           suggestion={curveSuggestion}
           systemHint={systemHint}
         />
+        {otherBrandNote}
       </div>
     );
   }
@@ -340,12 +353,19 @@ function CurveSuggestionBody({
  * { id, manufacturer, scale } — derived from whichever library system the
  * pieces most plausibly belong to. Returns undefined when no library piece
  * labels match (manual / cut-down inventory).
+ *
+ * Honors per-piece `system_id` when present (focus-group P2-T2-F3) so a
+ * mixed-brand inventory routes vendors by the dominant brand rather than
+ * silently inheriting whichever preset was loaded first.
  */
 function buildSystemHint(
   pieces: AnySolution["pieces"],
 ): { id: string; manufacturer: string; scale?: Scale } | undefined {
   const sys: TrackSystem | undefined = inferSystemForRows(
-    pieces.map((p) => ({ label: p.label })),
+    pieces.map((p) => ({
+      label: p.label,
+      system_id: (p as { system_id?: string }).system_id,
+    })),
     listSystems(),
   );
   if (!sys) return undefined;
@@ -354,6 +374,31 @@ function buildSystemHint(
     manufacturer: sys.manufacturer,
     scale: sys.scale,
   };
+}
+
+/**
+ * Count solution pieces whose explicit `system_id` differs from the
+ * dominant-brand `systemHint.id`. Returned count drives the inline
+ * "(N other brand pieces in this combo)" note next to the marketplace
+ * panel — see focus-group P2-T2-F3. Only pieces with a known system_id
+ * are tallied; hand-typed rows are silent.
+ */
+function otherBrandPieceCount(
+  pieces: AnySolution["pieces"],
+  dominantSystemId: string | undefined,
+): number {
+  if (!dominantSystemId) return 0;
+  let n = 0;
+  for (const p of pieces) {
+    const sid = (p as { system_id?: string }).system_id;
+    if (sid && sid !== dominantSystemId) {
+      // Each row carries a `count`; weigh by it so a 6-of-a-kind row
+      // shows as 6 mismatched pieces, not one.
+      const cnt = (p as { count?: number }).count;
+      n += typeof cnt === "number" && cnt > 0 ? cnt : 1;
+    }
+  }
+  return n;
 }
 
 interface CurveSuggestionMarketplaceProps {

@@ -111,7 +111,7 @@ function readPersistedUnit(): Unit {
 function detectScale(rows: InventoryRow[]): ScaleFilter {
   // Primary: library system → declared scale.
   const sys = inferSystemForRows(
-    rows.map((r) => ({ label: r.label })),
+    rows.map((r) => ({ label: r.label, system_id: r.system_id })),
     listSystems(),
   );
   if (sys) return sys.scale;

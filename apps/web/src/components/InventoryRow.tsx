@@ -1,3 +1,4 @@
+import { getSystem } from "@trackfit/library";
 import { formatLength } from "../lib/format";
 import type { InventoryRow as Row, Unit } from "../lib/types";
 import { PhotoButton } from "./PhotoButton";
@@ -19,6 +20,17 @@ interface Props {
  * frog number, "crossing"). The length column for those kinds is read-only
  * and gets a lock glyph next to it — that arc length is computed from
  * radius × arc, not user input. Straights and fitters keep the v0.2 layout.
+ *
+ * Qty cell is `[−] [input] [+]` (focus-group P1-T2-F2 + P5-T2-F1). The
+ * stepper buttons are 44×44 per WCAG 2.5.5; the text input stays editable
+ * for users who want to type a number directly. All three converge on the
+ * same `onChange("qty", value)` handler so the undo-toast wiring in
+ * useUndoableInventory continues to work without changes.
+ *
+ * Brand chip (focus-group P2-T2-F3) is shown beside the label only when
+ * `row.system_id` is set — i.e. the row was loaded from a preset or picked
+ * via the PiecePicker. Hand-typed rows render no chip; we deliberately
+ * don't force the user to pick a brand, that's friction.
  *
  * Mobile (<520px) re-stacks via grid-template-areas — see the @media block
  * in src/styles/index.css. The `data-field` and `data-action` attributes
@@ -59,6 +71,33 @@ export function InventoryRow({
   const lengthDisplay = formatLength(row.length_mm, unit);
   const lengthValue = isReadOnlyLength ? `~${lengthDisplay}` : lengthDisplay;
 
+  // Brand chip text — manufacturer name from the library, falls back to a
+  // de-slugged version of the system_id when the system isn't registered
+  // (defensive: a stale persisted row referencing a removed system still
+  // surfaces *something* readable rather than a broken state).
+  const brandLabel = (() => {
+    if (!row.system_id) return null;
+    const sys = getSystem(row.system_id);
+    if (sys) return sys.manufacturer;
+    return row.system_id
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(" ");
+  })();
+
+  // Stepper math. The qty handler upstream re-parses the string as an
+  // int and clamps at 0, so we serialize numbers to strings here. Floor
+  // guard: if the persisted qty is somehow non-numeric, treat as 0.
+  const currentQty = Number.isFinite(row.qty) ? row.qty : 0;
+  const decDisabled = isDecDisabled(currentQty);
+  const handleDec = () => {
+    if (decDisabled) return;
+    onChange(idx, "qty", String(stepQty(currentQty, "dec")));
+  };
+  const handleInc = () => {
+    onChange(idx, "qty", String(stepQty(currentQty, "inc")));
+  };
+
   return (
     <div className="inv-row" data-kind={kind ?? "unknown"}>
       <PhotoButton
@@ -78,11 +117,22 @@ export function InventoryRow({
           value={row.label}
           onChange={(e) => onChange(idx, "label", e.target.value)}
         />
-        {subscript ? (
-          <span className="inv-subscript" title={subscript}>
-            {subscript}
-          </span>
-        ) : null}
+        <div className="inv-label-meta">
+          {brandLabel ? (
+            <span
+              className="inv-brand-chip"
+              title={`Source: ${brandLabel}`}
+              aria-label={`Brand ${brandLabel}`}
+            >
+              {brandLabel}
+            </span>
+          ) : null}
+          {subscript ? (
+            <span className="inv-subscript" title={subscript}>
+              {subscript}
+            </span>
+          ) : null}
+        </div>
       </div>
       <div className="inv-length-cell" data-field="length">
         {isReadOnlyLength ? (
@@ -104,15 +154,36 @@ export function InventoryRow({
           />
         )}
       </div>
-      <input
-        type="number"
-        step={1}
-        min={0}
-        inputMode="numeric"
-        value={row.qty}
-        data-field="qty"
-        onChange={(e) => onChange(idx, "qty", e.target.value)}
-      />
+      <div className="inv-qty-cell" data-field="qty">
+        <button
+          type="button"
+          className="qty-stepper"
+          aria-label="Decrease quantity"
+          aria-disabled={decDisabled || undefined}
+          disabled={decDisabled}
+          onClick={handleDec}
+        >
+          −
+        </button>
+        <input
+          type="number"
+          step={1}
+          min={0}
+          inputMode="numeric"
+          className="qty-input"
+          value={row.qty}
+          onChange={(e) => onChange(idx, "qty", e.target.value)}
+          aria-label={`Quantity of ${row.label}`}
+        />
+        <button
+          type="button"
+          className="qty-stepper"
+          aria-label="Increase quantity"
+          onClick={handleInc}
+        >
+          +
+        </button>
+      </div>
       <button
         type="button"
         className="icon-btn"
@@ -125,6 +196,31 @@ export function InventoryRow({
       </button>
     </div>
   );
+}
+
+/**
+ * Pure qty-stepper math. Exported for unit tests so the
+ * "increment / decrement / clamp at 0" rule is verifiable without DOM.
+ *
+ * - `inc`: unbounded — some O-scale collectors own 200+ of one piece type
+ *   (focus-group P1-T2-F2 rationale).
+ * - `dec`: clamps at 0; never goes negative.
+ * - Non-numeric input is coerced to 0 defensively (matches the
+ *   InventoryRow's Number.isFinite guard).
+ */
+export function stepQty(current: number, direction: "inc" | "dec"): number {
+  const c = Number.isFinite(current) ? current : 0;
+  if (direction === "inc") return c + 1;
+  return Math.max(0, c - 1);
+}
+
+/**
+ * Pure "is the decrement button disabled?" predicate. Mirrors the spec's
+ * disabled-at-floor rule — no upper ceiling.
+ */
+export function isDecDisabled(current: number): boolean {
+  const c = Number.isFinite(current) ? current : 0;
+  return c <= 0;
 }
 
 /**

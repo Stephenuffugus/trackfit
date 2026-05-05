@@ -18,6 +18,7 @@ import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
 import { LayoutSuggester } from "./components/LayoutSuggester";
 import { Onboarding } from "./components/Onboarding";
 import { CandidateConfirmSheet } from "./components/CandidateConfirmSheet";
+import { StorageWarningToast } from "./components/StorageWarningToast";
 import { UndoToast } from "./components/UndoToast";
 import { useUndoableInventory } from "./hooks/useUndoableInventory";
 import { usePhotoCapture } from "./hooks/usePhotoCapture";
@@ -560,6 +561,12 @@ export default function App() {
           label: row.label,
           length_mm: row.length_mm,
           qty: row.qty,
+          // Pass through the source-system attribution so the SUGGESTED
+          // callout's marketplace expander can route by per-row brand
+          // rather than guessing from label-match counts (focus-group
+          // P2-T2-F3). The solver's InventoryItem accepts arbitrary
+          // pass-through metadata via its index signature.
+          system_id: row.system_id,
         }));
       request = {
         id,
@@ -605,6 +612,7 @@ export default function App() {
               radius_mm: row.radius_mm as number,
               arc_degrees: row.arc_degrees as number,
               qty: row.qty,
+              system_id: row.system_id,
             };
           }
           if (row.kind === "turnout") {
@@ -618,6 +626,7 @@ export default function App() {
               overall_length_mm: overall,
               divergence_degrees: row.divergence_degrees ?? null,
               qty: row.qty,
+              system_id: row.system_id,
             };
           }
           return {
@@ -625,6 +634,7 @@ export default function App() {
             kind: "straight" as const,
             length_mm: row.length_mm,
             qty: row.qty,
+            system_id: row.system_id,
           };
         });
 
@@ -924,6 +934,12 @@ export default function App() {
           onDismiss={clearToast}
         />
       ) : null}
+
+      {/* Storage-quota safety net. Listens for the global
+          trackfit:storage-warning event fired from safeSetItem call
+          sites and surfaces a one-time toast with concrete copy.
+          See lib/storage.ts and components/StorageWarningToast.tsx. */}
+      <StorageWarningToast />
 
       {/* Hidden file inputs — single-instance like v0.2, re-routed via the
           usePhotoCapture hooks. */}
