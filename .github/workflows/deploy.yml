@@ -37,12 +37,24 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate library data integrity
+        run: pnpm --filter @trackfit/library run validate
+        # Hard gate: a curve with bad math or a piece missing required fields
+        # would silently mis-solve gaps. This must pass for every push.
+
       - name: Run solver tests (1D subset-sum is the killer feature)
         run: pnpm --filter @trackfit/solver run test || true
-        # `|| true` because the curve solver perf test is a known issue (#19).
-        # The 1D subset-sum tests are the real shipping gate; if those fail the
-        # whole build will visibly break in production. We rely on the dev
-        # workflow + manual review rather than a strict CI gate for v0.3.
+        # `|| true` because the curve solver perf test for big curve-only
+        # inventories is a known issue (#19). The 1D subset-sum tests are the
+        # real shipping gate; if those fail the whole build will visibly break
+        # in production. We rely on the dev workflow + manual review rather
+        # than a strict CI gate for v0.3.
+
+      - name: Run web app state-machine tests
+        run: pnpm --filter @trackfit/web run test
+
+      - name: Typecheck all packages
+        run: pnpm -r run typecheck
 
       - name: Build web app
         env:

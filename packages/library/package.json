@@ -11,7 +11,8 @@
     "./data/*": "./data/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate": "node scripts/validate.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
