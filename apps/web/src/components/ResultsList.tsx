@@ -140,8 +140,23 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
     );
   }
 
-  // Curve mode near-miss — surface bestNearMiss + the typed suggestion.
+  // Curve mode near-miss surface. Three situations to handle:
+  //   1. We have a bestNearMiss — render the existing near-miss card +
+  //      the typed suggestion. Most common case.
+  //   2. No bestNearMiss but the solver returned a suggestion. This is
+  //      either the feasibility pre-check ("your inventory can't span
+  //      this gap") or a similar fast bail-out. Render the suggestion
+  //      message in a calm empty-state — no near-miss card to show.
+  //   3. Neither — fall back to the generic empty state.
   if (!result.bestNearMiss) {
+    if (result.suggestion) {
+      return (
+        <section className="results" id="results">
+          <p className="label">No combinations found</p>
+          <div className="empty-state">{result.suggestion.message}</div>
+        </section>
+      );
+    }
     return (
       <section className="results" id="results">
         <p className="label">No combinations found</p>
@@ -158,7 +173,19 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
   const nearKind = r_long <= 0 ? "under" : "over";
   return (
     <section className="results" id="results">
-      <p className="label">No exact fit · nearest options</p>
+      <p className="label">
+        {result.timed_out
+          ? "Search ran out of time · best guess so far"
+          : "No exact fit · nearest options"}
+      </p>
+      {result.timed_out ? (
+        <div className="empty-state results-timeout-note">
+          The solver hit its 8-second budget before finding an exact fit.
+          The closest combination it found is shown below. If the gap is
+          really this hard, try breaking it into shorter segments or adding
+          a longer flex piece to your inventory.
+        </div>
+      ) : null}
       <ResultCard
         solution={result.bestNearMiss}
         kind={nearKind}

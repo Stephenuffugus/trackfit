@@ -108,6 +108,14 @@ export default function App() {
   // Results state.
   const [results, setResults] = useState<ResultsState>({ kind: "idle" });
   const [solving, setSolving] = useState(false);
+  /**
+   * Wall-clock seconds since the current solve started. Drives the UI
+   * counter ("Solving… 3s") and gates the moment we surface a Cancel
+   * button. Null when no solve is in flight.
+   */
+  const [solveElapsedSec, setSolveElapsedSec] = useState<number | null>(null);
+  const solveStartRef = useRef<number | null>(null);
+  const solveTickRef = useRef<number | null>(null);
 
   // Photo modal.
   const [modalCtx, setModalCtx] = useState<ModalContext>(null);
@@ -161,21 +169,53 @@ export default function App() {
   /* Solver worker                                                      */
   /* ------------------------------------------------------------------ */
 
-  // Single long-lived worker. We track the most recently dispatched request
-  // id so that stale responses (rare, but possible if the user re-submits
-  // before the previous solve finishes) are ignored.
+  // Worker is recreatable: Cancel terminates the in-flight worker and
+  // spins up a fresh one so the next solve starts cleanly. We track the
+  // most recently dispatched request id so stale responses (rare, but
+  // possible if the user re-submits before the previous solve finishes)
+  // are ignored.
   const workerRef = useRef<Worker | null>(null);
   const reqIdRef = useRef(0);
   const inflightIdRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  // Spin up a new worker. Caller must terminate the old one first.
+  const spawnWorker = () => {
     const worker = new SolverWorker();
     workerRef.current = worker;
+    return worker;
+  };
+
+  useEffect(() => {
+    spawnWorker();
     return () => {
-      worker.terminate();
+      const worker = workerRef.current;
+      if (worker) worker.terminate();
       workerRef.current = null;
+      if (solveTickRef.current !== null) {
+        window.clearInterval(solveTickRef.current);
+        solveTickRef.current = null;
+      }
     };
   }, []);
+
+  /** Stop the current solve cleanly: terminate the worker, drop any
+   *  in-flight request id, clear timers, reset UI to idle. The worker
+   *  is replaced so the next Solve click starts from a clean slate. */
+  const cancelSolve = () => {
+    const worker = workerRef.current;
+    if (worker) worker.terminate();
+    workerRef.current = null;
+    spawnWorker();
+    inflightIdRef.current = null;
+    if (solveTickRef.current !== null) {
+      window.clearInterval(solveTickRef.current);
+      solveTickRef.current = null;
+    }
+    solveStartRef.current = null;
+    setSolveElapsedSec(null);
+    setSolving(false);
+    setResults({ kind: "idle" });
+  };
 
   /* ------------------------------------------------------------------ */
   /* Preset loading                                                     */
@@ -476,6 +516,20 @@ export default function App() {
     const id = ++reqIdRef.current;
     inflightIdRef.current = id;
     setSolving(true);
+    // Kick off the elapsed-time counter. Updates once a second so the
+    // user sees "Solving… 1s, 2s, 3s…" and the Cancel button surfaces
+    // after 2 seconds. We don't try for sub-second granularity — older
+    // eyes don't appreciate a flickering counter.
+    solveStartRef.current = Date.now();
+    setSolveElapsedSec(0);
+    if (solveTickRef.current !== null) {
+      window.clearInterval(solveTickRef.current);
+    }
+    solveTickRef.current = window.setInterval(() => {
+      const start = solveStartRef.current;
+      if (start === null) return;
+      setSolveElapsedSec(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
 
     let request: SolverRequest;
     if (gapShape === "straight") {
@@ -611,6 +665,12 @@ export default function App() {
         items,
         target: curveTarget,
         tolerance: curveTol,
+        // 8-second wall-clock budget. The solver returns whatever
+        // bestNearMiss it has at that point with timed_out: true; the
+        // results card surfaces a "search ran out of time" note. The
+        // feasibility pre-check fires in microseconds so an
+        // unreachable target never even arms this timer.
+        maxElapsedMs: 8000,
       };
     }
 
@@ -621,6 +681,16 @@ export default function App() {
       worker.removeEventListener("message", onMessage);
       inflightIdRef.current = null;
       setSolving(false);
+      // Stop the elapsed-time counter cleanly. We keep the value
+      // displayed so the user sees "solved in 4s" momentarily before
+      // the results card replaces the spinner; the next solve() call
+      // resets it.
+      if (solveTickRef.current !== null) {
+        window.clearInterval(solveTickRef.current);
+        solveTickRef.current = null;
+      }
+      solveStartRef.current = null;
+      setSolveElapsedSec(null);
 
       if (!msg.ok) {
         console.error("Trackfit: solver worker error", msg.error);
@@ -648,8 +718,24 @@ export default function App() {
         });
       } else {
         const result = msg.result as CurveSolverResult;
+        // Feasibility pre-check OR pure dead-end: the solver has no
+        // solutions AND no near-miss to surface. If the solver still
+        // returned a typed suggestion (the "your inventory can't span
+        // this" case), pass it through so the results card renders the
+        // helpful sentence instead of the generic empty state.
         if (result.solutions.length === 0 && !result.bestNearMiss) {
-          setResults({ kind: "empty", targetVal });
+          if (result.suggestion) {
+            setResults({
+              kind: "results",
+              mode: "curve",
+              result,
+              target_mm,
+              elapsed: msg.elapsed_ms.toFixed(1),
+              inventory,
+            });
+          } else {
+            setResults({ kind: "empty", targetVal });
+          }
           return;
         }
         setResults({
@@ -720,6 +806,8 @@ export default function App() {
           gapArcDegrees={gapArcDegrees}
           gapOffset={gapOffset}
           solving={solving}
+          solveElapsedSec={solveElapsedSec}
+          onCancel={cancelSolve}
           onPhotoClick={handleGapPhotoClick}
           onTargetChange={setTarget}
           onToleranceChange={setTolerance}

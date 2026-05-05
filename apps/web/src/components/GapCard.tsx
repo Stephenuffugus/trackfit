@@ -16,6 +16,14 @@ interface Props {
   gapOffset: string;
   /** disable the solve button while a worker is in flight. */
   solving: boolean;
+  /**
+   * Wall-clock seconds since the current solve started. Drives the
+   * "Solving… 3s" counter and the Cancel button (which shows after
+   * 2 s). Null when no solve is in flight.
+   */
+  solveElapsedSec: number | null;
+  /** Stop the in-flight solve. The button surfaces after 2 s. */
+  onCancel: () => void;
   onPhotoClick: () => void;
   onTargetChange: (v: string) => void;
   onToleranceChange: (v: string) => void;
@@ -55,6 +63,8 @@ export function GapCard({
   gapArcDegrees,
   gapOffset,
   solving,
+  solveElapsedSec,
+  onCancel,
   onPhotoClick,
   onTargetChange,
   onToleranceChange,
@@ -241,12 +251,31 @@ export function GapCard({
           {solving ? (
             <span className="solve-busy-inner">
               <SpinnerGlyph />
-              Solving…
+              {typeof solveElapsedSec === "number" && solveElapsedSec >= 1
+                ? `Solving… ${solveElapsedSec}s`
+                : "Solving…"}
             </span>
           ) : (
             "Find combinations →"
           )}
         </button>
+
+        {/* Cancel button surfaces after 2 s of solving. The solver self-
+            times-out at 8 s on legitimate-but-hard targets; this button
+            is for the user who knows the gap they typed is unreasonable
+            and just wants their UI back. */}
+        {solving &&
+        typeof solveElapsedSec === "number" &&
+        solveElapsedSec >= 2 ? (
+          <button
+            type="button"
+            className="btn solve-cancel"
+            onClick={onCancel}
+            aria-label="Cancel the current solve"
+          >
+            Cancel solve
+          </button>
+        ) : null}
       </div>
     </section>
   );

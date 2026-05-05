@@ -41,6 +41,15 @@ export type SolverRequest =
       items: CurveInventoryItem[];
       target: CurveTarget;
       tolerance: CurveTolerance;
+      /**
+       * Wall-clock budget in ms. The solver self-times-out and returns
+       * whatever near-miss it has found so far with `timed_out: true`. The
+       * UI renders the partial result alongside a "search ran out of time"
+       * banner. Defaults inside the solver if omitted; UI typically passes
+       * 8000 ms so the user sees an answer (or a clean "we tried our best"
+       * fallback) within ~10 seconds even on a hard target.
+       */
+      maxElapsedMs?: number;
     };
 
 export type SolverResponse =
@@ -83,7 +92,11 @@ ctx.addEventListener("message", (e: MessageEvent<SolverRequest>) => {
       };
       ctx.postMessage(out);
     } else {
-      const result = findCurveCombinations(req.items, req.target, req.tolerance);
+      const result = findCurveCombinations(req.items, req.target, req.tolerance, {
+        ...(typeof req.maxElapsedMs === "number"
+          ? { maxElapsedMs: req.maxElapsedMs }
+          : {}),
+      });
       const out: SolverResponse = {
         id: req.id,
         ok: true,

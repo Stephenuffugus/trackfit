@@ -540,6 +540,22 @@ input[type="number"]::-webkit-inner-spin-button {
     transform: rotate(360deg);
   }
 }
+/* Cancel button below the busy solve button. Layout-only — inherits
+ * colors, font, and tap-area from `.btn`. Surfaces after 2 s of solving
+ * (see GapCard.tsx); prevents the "is the app frozen?" feeling on hard
+ * targets. */
+.solve-cancel {
+  margin-top: 8px;
+  width: 100%;
+}
+/* Calm advisory note above the timed-out near-miss card. Reuses the
+ * `.empty-state` typography and the rule-line border vocabulary; no
+ * new color tokens. */
+.results-timeout-note {
+  border-top: 1px dashed var(--rule);
+  border-bottom: 1px dashed var(--rule);
+  margin-bottom: 10px;
+}
 
 /* ----- GAP SHAPE PICKER ----- */
 .gap-shape {
