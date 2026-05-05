@@ -1,0 +1,138 @@
+{
+  "id": "bachmann-ez-track-n",
+  "name": "Bachmann E-Z Track (N)",
+  "manufacturer": "Bachmann",
+  "scale": "N",
+  "default_unit": "in",
+  "description": "Bachmann E-Z Track (N) is the N-scale companion to the HO E-Z Track system: nickel-silver rail molded into integrated gray plastic roadbed sections. The N range is narrower than the HO range \u2014 Bachmann concentrates on a small number of straight lengths, two curve radii (11.25\" and 11.4\"), and a basic left/right turnout pair. SKUs are 5-digit Bachmann part numbers. Unlike HO, the N E-Z Track line is offered only in nickel silver (no steel-rail variant in current production).",
+  "pieces": [
+    {
+      "id": "5in-straight",
+      "product_code": null,
+      "label": "5\" straight",
+      "kind": "straight",
+      "length_mm": 127.0,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "5 in \u00d7 25.4 = 127.0 mm. The standard N E-Z Track straight; analogous to HO's 9\" straight. SKU not asserted here \u2014 Bachmann's HO and N catalogues share number ranges and dealer listings show inconsistent N straight SKUs across editions, so left null per the schema's \u2018empty is honest\u2019 rule."
+    },
+    {
+      "id": "2-5in-straight",
+      "product_code": null,
+      "label": "2.5\" straight",
+      "kind": "straight",
+      "length_mm": 63.5,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Half-section fitter. 2.5 in \u00d7 25.4 = 63.5 mm. SKU varies between catalogues \u2014 left null pending verification."
+    },
+    {
+      "id": "1-25in-straight",
+      "product_code": null,
+      "label": "1.25\" straight",
+      "kind": "fitter",
+      "length_mm": 31.75,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Quarter-section short fitter. 1.25 in \u00d7 25.4 = 31.75 mm. SKU not asserted."
+    },
+    {
+      "id": "r11-25-22-5deg-curve",
+      "product_code": null,
+      "label": "11.25\" radius curve, 22.5\u00b0",
+      "kind": "curve",
+      "length_mm": 112.205,
+      "radius_mm": 285.75,
+      "arc_degrees": 22.5,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "16 sections form a full 360\u00b0 circle. radius 11.25 in \u00d7 25.4 = 285.75 mm; arc length = 2\u03c0 \u00d7 285.75 \u00d7 (22.5 / 360) = 112.205 mm. Standard sectional N curve."
+    },
+    {
+      "id": "r11-4-22-5deg-curve",
+      "product_code": null,
+      "label": "11.4\" radius curve, 22.5\u00b0",
+      "kind": "curve",
+      "length_mm": 113.701,
+      "radius_mm": 289.56,
+      "arc_degrees": 22.5,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Slightly larger N-scale radius offered alongside the 11.25\" curve in some Bachmann catalogue printings. radius 11.4 in \u00d7 25.4 = 289.56 mm; arc length = 2\u03c0 \u00d7 289.56 \u00d7 (22.5 / 360) = 113.701 mm. The 11.4\" radius is documented in dealer listings (Walthers / Trainz) but the SKU is not consistently published on Bachmann's site, so it is left null. The 11.25\" / 11.4\" near-duplication should be reconciled at live-verify time \u2014 these may be the same physical section described two ways across catalogue editions."
+    },
+    {
+      "id": "left-turnout-manual",
+      "product_code": null,
+      "label": "Manual turnout, left",
+      "kind": "turnout",
+      "length_mm": null,
+      "turnout_frog": null,
+      "overall_length_mm": null,
+      "divergence_degrees": null,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Bachmann does not publish a frog-number for its N E-Z Track turnout; it is generally treated as a starter-set-grade \u2018standard\u2019 turnout. Overall length and divergence are not published on the manufacturer page; left null per \u2018empty is honest\u2019."
+    },
+    {
+      "id": "right-turnout-manual",
+      "product_code": null,
+      "label": "Manual turnout, right",
+      "kind": "turnout",
+      "length_mm": null,
+      "turnout_frog": null,
+      "overall_length_mm": null,
+      "divergence_degrees": null,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Right-hand mirror of the left manual turnout. Same caveats."
+    },
+    {
+      "id": "left-turnout-remote",
+      "product_code": null,
+      "label": "Remote turnout, left",
+      "kind": "turnout",
+      "length_mm": null,
+      "turnout_frog": null,
+      "overall_length_mm": null,
+      "divergence_degrees": null,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Powered version of the left manual turnout. Geometry assumed identical."
+    },
+    {
+      "id": "right-turnout-remote",
+      "product_code": null,
+      "label": "Remote turnout, right",
+      "kind": "turnout",
+      "length_mm": null,
+      "turnout_frog": null,
+      "overall_length_mm": null,
+      "divergence_degrees": null,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Powered version of the right manual turnout."
+    },
+    {
+      "id": "terminal-rerailer-5in",
+      "product_code": null,
+      "label": "5\" terminal rerailer with wires",
+      "kind": "rerailer",
+      "length_mm": 127.0,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Drop-in replacement for a 5\" N straight, pre-wired as the layout's power feed. Same 127.0 mm length as the plain 5\" straight."
+    },
+    {
+      "id": "hayes-bumper",
+      "product_code": null,
+      "label": "Hayes bumper / end-of-track stop",
+      "kind": "bumper",
+      "length_mm": null,
+      "source_url": "https://www.bachmanntrains.com/home-usa/track.php",
+      "source_verified_at": null,
+      "notes": "Plug-on bumper; clips into the end of any E-Z Track N section without contributing measurable centerline length, so length_mm is null."
+    }
+  ],
+  "data_quality": "unverified-draft",
+  "data_quality_note": "Generated 2026-05-05 by an agent without working WebFetch/WebSearch access. Geometry math (length_mm = in*25.4; curve length = 2*pi*r*deg/360) is hand-computed and high-confidence. Product codes (SKUs) and source_url values are derived from training-data recall and were NOT live-verified. source_verified_at is null on every piece until a session with web access re-checks the catalog. See docs/library-notes/bachmann-ez-track-n.md for per-system caveats."
+}

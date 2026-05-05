@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Trackfit — Sectional Track Combination Finder</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1a2238" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Trackfit" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="description" content="Sectional track combination finder for model railroaders. Tell it what's in your box and the gap you're trying to fill — get every combination that fits, exactly or close." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* =====================================================================
+       TRACKFIT v0.2 — Sectional track combination finder
+       Single-file prototype. Vanilla HTML/CSS/JS. No build step.
+       Aesthetic: vintage railroad blueprint / engineering schematic.
+
+       v0.2 adds: per-piece photo capture, gap photo, localStorage persistence,
+       near-miss suggestions ("you'd need a 2.5\" piece to close this gap").
+
+       HANDOFF NOTES for Claude Code:
+         - Search for "TODO(vision)" markers — these are where a vision API
+           (e.g. Anthropic Messages API w/ image input) should be wired in
+           to auto-extract piece label + length from a captured photo.
+         - Search for "TODO(measure)" — reference-object scaling or AR
+           measurement of the physical gap from the gap photo.
+         - Search for "TODO(curves)" — sectional curves are a 2D problem
+           (length AND angle) and aren't yet modeled. Worth a v0.3 module.
+       ===================================================================== */
+
+    :root {
+      --bg: #f4ede0;
+      --bg-elev: #fdf8ee;
+      --ink: #1a2238;
+      --ink-soft: #4a5169;
+      --rule: #c9bfa8;
+      --accent: #b24b2b;     /* signal red */
+      --brass: #9a7b3f;
+      --good: #4f6b3a;
+      /* Distinct, muted palette for piece-type bars */
+      --bar-1: #b24b2b;
+      --bar-2: #2e4a6b;
+      --bar-3: #9a7b3f;
+      --bar-4: #4f6b3a;
+      --bar-5: #6b4a6b;
+      --bar-6: #8b5a2b;
+      --bar-7: #3a6b6b;
+      --bar-8: #b28a2b;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background:
+        repeating-linear-gradient(0deg, transparent 0 24px, rgba(26,34,56,0.035) 24px 25px),
+        repeating-linear-gradient(90deg, transparent 0 24px, rgba(26,34,56,0.035) 24px 25px),
+        var(--bg);
+      color: var(--ink);
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 96px; }
+
+    /* ----- HEADER ----- */
+    header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 28px; }
+    .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 6px;
+    }
+    h1 {
+      font-family: 'Fraunces', serif; font-weight: 900;
+      font-size: clamp(38px, 8vw, 56px); line-height: 0.95;
+      margin: 0 0 10px; letter-spacing: -0.025em;
+    }
+    .tagline {
+      font-size: 15px; color: var(--ink-soft);
+      margin: 0; max-width: 540px; line-height: 1.5;
+    }
+
+    /* ----- SECTION LABELS ----- */
+    section { margin-bottom: 26px; }
+    .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--ink-soft); margin: 0 0 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .label::before {
+      content: ''; width: 18px; height: 1px; background: var(--ink-soft);
+    }
+    .label-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; margin-bottom: 10px;
+    }
+    .label-row .label { margin: 0; }
+    .text-action {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink-soft); background: none; border: none;
+      cursor: pointer; padding: 4px 0;
+    }
+    .text-action:hover { color: var(--accent); }
+
+    /* ----- PRESET CHIPS ----- */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      font: 500 13px 'IBM Plex Sans', sans-serif;
+      background: var(--bg-elev);
+      border: 1.5px solid var(--ink);
+      color: var(--ink);
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .chip:hover, .chip.active { background: var(--ink); color: var(--bg-elev); }
+
+    /* ----- CARD ----- */
+    .card {
+      background: var(--bg-elev);
+      border: 1.5px solid var(--ink);
+      padding: 16px;
+    }
+
+    /* ----- INVENTORY ----- */
+    .inv-row {
+      display: grid;
+      grid-template-columns: 56px 1fr 88px 64px 28px;
+      gap: 8px; align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--rule);
+    }
+    .inv-row:last-of-type { border-bottom: none; }
+    .inv-head {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink-soft);
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--ink);
+    }
+
+    input[type="text"], input[type="number"] {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      padding: 8px 10px;
+      border: 1px solid var(--rule);
+      background: var(--bg);
+      color: var(--ink);
+      border-radius: 0;
+      width: 100%;
+      min-width: 0;
+    }
+    input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      border-color: var(--accent);
+    }
+    input[type="number"] { -moz-appearance: textfield; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+    /* ----- PHOTO BUTTONS / SPECIMEN FRAMES ----- */
+    .photo-btn {
+      position: relative;
+      width: 56px; height: 56px;
+      padding: 0; margin: 0;
+      background: var(--bg);
+      border: 1.5px solid var(--ink);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .photo-btn::before, .photo-btn::after,
+    .photo-btn .corner-tl, .photo-btn .corner-br {
+      content: ''; position: absolute; width: 6px; height: 6px;
+      border: 1.5px solid var(--ink);
+    }
+    .photo-btn::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+    .photo-btn::after  { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+    .photo-btn .corner-tl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+    .photo-btn .corner-br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+    .photo-btn.empty {
+      background:
+        repeating-linear-gradient(45deg, transparent 0 4px, rgba(26,34,56,0.08) 4px 5px),
+        var(--bg);
+    }
+    .photo-btn .cam-icon {
+      font-size: 16px; color: var(--ink-soft);
+      font-family: 'IBM Plex Mono', monospace; font-weight: 500;
+    }
+    .photo-btn img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .photo-btn:hover .cam-icon { color: var(--accent); }
+    .photo-btn.lg {
+      width: 96px; height: 96px;
+    }
+
+    .icon-btn {
+      background: none; border: none; cursor: pointer;
+      padding: 6px; color: var(--ink-soft); font-size: 22px; line-height: 1;
+    }
+    .icon-btn:hover { color: var(--accent); }
+
+    .add-row {
+      margin-top: 12px;
+      width: 100%;
+      background: none;
+      border: 1.5px dashed var(--ink);
+      padding: 10px;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink);
+    }
+    .add-row:hover { background: var(--ink); color: var(--bg-elev); }
+
+    /* ----- TARGET CARD ----- */
+    .gap-photo-area {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding-bottom: 14px; margin-bottom: 14px;
+      border-bottom: 1px dashed var(--rule);
+    }
+    .gap-photo-text { flex: 1; min-width: 0; }
+    .gap-photo-text .field-label { display: block; margin-bottom: 4px; }
+    .gap-photo-text .hint {
+      font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.45;
+    }
+
+    .target-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .unit-row {
+      margin-top: 14px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .unit-toggle { display: inline-flex; border: 1.5px solid var(--ink); }
+    .unit-toggle button {
+      background: var(--bg-elev); border: none; padding: 6px 14px;
+      font: 500 12px 'IBM Plex Mono', monospace;
+      cursor: pointer; color: var(--ink);
+    }
+    .unit-toggle button.active { background: var(--ink); color: var(--bg-elev); }
+
+    .solve {
+      margin-top: 18px;
+      width: 100%;
+      background: var(--accent);
+      color: var(--bg-elev);
+      border: none;
+      padding: 16px;
+      font: 700 18px 'Fraunces', serif;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .solve:hover { background: var(--ink); }
+
+    /* ----- RESULTS ----- */
+    .results { margin-top: 28px; }
+    .result-card {
+      background: var(--bg-elev);
+      border: 1.5px solid var(--ink);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .result-card.near-miss {
+      border-style: dashed;
+      border-color: var(--brass);
+    }
+    .result-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; margin-bottom: 6px; flex-wrap: wrap;
+    }
+    .result-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .result-status.exact { color: var(--good); }
+    .result-status.close { color: var(--brass); }
+    .result-status.miss  { color: var(--brass); }
+    .result-total {
+      font: 700 24px 'Fraunces', serif;
+      letter-spacing: -0.01em;
+    }
+    .meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; color: var(--ink-soft); margin-top: 2px;
+    }
+
+    .bar {
+      display: flex;
+      height: 34px;
+      border: 1px solid var(--ink);
+      margin: 12px 0 10px;
+      background: repeating-linear-gradient(90deg, var(--bg) 0 4px, transparent 4px 8px);
+    }
+    .bar-seg {
+      height: 100%;
+      border-right: 1px solid rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font: 500 10px 'IBM Plex Mono', monospace;
+      color: white; overflow: hidden;
+    }
+    .bar-seg:last-child { border-right: none; }
+
+    .pieces-list {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.8;
+    }
+    .pieces-list .pchip {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-right: 14px;
+    }
+    .swatch { width: 11px; height: 11px; display: inline-block; border: 1px solid rgba(0,0,0,0.2); }
+
+    /* "Stamped" suggestion callout — railroad bill-of-lading vibe */
+    .suggest {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1.5px solid var(--accent);
+      background: rgba(178, 75, 43, 0.06);
+      position: relative;
+    }
+    .suggest::before {
+      content: 'SUGGESTED'; position: absolute; top: -8px; left: 10px;
+      background: var(--bg-elev); padding: 0 6px;
+      font: 500 9px 'IBM Plex Mono', monospace;
+      letter-spacing: 0.18em; color: var(--accent);
+    }
+    .suggest .qty {
+      font: 700 18px 'Fraunces', serif; color: var(--accent);
+    }
+
+    .empty {
+      text-align: center; color: var(--ink-soft);
+      font: 500 16px 'Fraunces', serif; font-style: italic;
+      padding: 28px 12px;
+      border: 1.5px dashed var(--rule);
+    }
+
+    /* ----- PHOTO MODAL ----- */
+    .modal {
+      position: fixed; inset: 0;
+      background: rgba(26, 34, 56, 0.85);
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 100; padding: 20px;
+    }
+    .modal.open { display: flex; }
+    .modal-inner {
+      background: var(--bg-elev);
+      border: 2px solid var(--ink);
+      max-width: 92vw; max-height: 90vh;
+      display: flex; flex-direction: column;
+      padding: 14px;
+    }
+    .modal-img {
+      max-width: 100%; max-height: 70vh;
+      object-fit: contain;
+      border: 1px solid var(--rule);
+    }
+    .modal-meta {
+      margin-top: 10px;
+      font: 500 11px 'IBM Plex Mono', monospace;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--ink-soft);
+      display: flex; justify-content: space-between; gap: 12px;
+    }
+    .modal-actions {
+      margin-top: 10px;
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .btn {
+      background: var(--bg);
+      border: 1.5px solid var(--ink);
+      padding: 8px 14px;
+      font: 500 12px 'IBM Plex Mono', monospace;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; color: var(--ink);
+    }
+    .btn:hover { background: var(--ink); color: var(--bg-elev); }
+    .btn.danger { color: var(--accent); border-color: var(--accent); }
+    .btn.danger:hover { background: var(--accent); color: var(--bg-elev); }
+
+    footer {
+      margin-top: 48px; padding-top: 18px;
+      border-top: 1px solid var(--rule);
+      font: 400 11px 'IBM Plex Mono', monospace;
+      color: var(--ink-soft); text-align: center;
+      letter-spacing: 0.08em;
+    }
+
+    /* ----- MOBILE ----- */
+    @media (max-width: 520px) {
+      .inv-row {
+        grid-template-columns: 48px 1fr 28px;
+        grid-template-areas:
+          "photo label  delete"
+          "photo length qty";
+        row-gap: 6px;
+        padding: 12px 0;
+      }
+      .inv-row .photo-btn { grid-area: photo; width: 48px; height: 48px; align-self: start; margin-top: 2px; }
+      .inv-row [data-field="label"]  { grid-area: label; }
+      .inv-row [data-field="length"] { grid-area: length; }
+      .inv-row [data-field="qty"]    { grid-area: qty; }
+      .inv-row [data-action="delete"]{ grid-area: delete; justify-self: end; }
+      .inv-head { display: none; }
+      .target-grid { grid-template-columns: 1fr; }
+      .photo-btn.lg { width: 80px; height: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="eyebrow">Sectional Track Solver</p>
+      <h1>Trackfit</h1>
+      <p class="tagline">
+        Tell it what's in your box and the gap you're trying to fill. It'll find every combination of pieces that fits — exactly or within tolerance.
+      </p>
+    </header>
+
+    <section>
+      <p class="label">Load a track system</p>
+      <div class="chips" id="presetChips"></div>
+    </section>
+
+    <section>
+      <div class="label-row">
+        <p class="label">Your inventory</p>
+        <button class="text-action" id="resetBtn" title="Clear all pieces and reload the default preset">Reset</button>
+      </div>
+      <div class="card">
+        <div class="inv-row inv-head">
+          <div>Photo</div>
+          <div>Piece label</div>
+          <div>Length</div>
+          <div>Qty</div>
+          <div></div>
+        </div>
+        <div id="invRows"></div>
+        <button class="add-row" id="addRowBtn">+ Add piece</button>
+      </div>
+    </section>
+
+    <section>
+      <p class="label">Gap to fill</p>
+      <div class="card">
+        <div class="gap-photo-area">
+          <button class="photo-btn lg empty" id="gapPhotoBtn" type="button" aria-label="Add photo of the gap">
+            <span class="cam-icon">+ photo</span>
+            <span class="corner-tl"></span><span class="corner-br"></span>
+          </button>
+          <div class="gap-photo-text">
+            <span class="field-label">Photo of the gap (optional)</span>
+            <p class="hint">Snap a reference photo so you remember which gap this is. <em>Coming soon: place a known-length object in frame to auto-measure.</em></p>
+          </div>
+        </div>
+
+        <div class="target-grid">
+          <div class="field">
+            <span class="field-label">Target length</span>
+            <input type="number" id="targetInput" step="any" placeholder="e.g. 13.5" />
+          </div>
+          <div class="field">
+            <span class="field-label">Tolerance (±)</span>
+            <input type="number" id="toleranceInput" step="any" value="0" />
+          </div>
+        </div>
+        <div class="unit-row">
+          <span class="field-label">Units</span>
+          <div class="unit-toggle">
+            <button id="unitInches" class="active">Inches</button>
+            <button id="unitMm">Millimeters</button>
+          </div>
+        </div>
+        <button class="solve" id="solveBtn">Find combinations →</button>
+      </div>
+    </section>
+
+    <section class="results" id="results"></section>
+
+    <footer>TRACKFIT v0.2 · prototype</footer>
+  </div>
+
+  <!-- Photo viewer modal -->
+  <div class="modal" id="photoModal" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div class="modal-inner">
+      <img class="modal-img" id="modalImg" alt="" />
+      <div class="modal-meta">
+        <span id="modalLabel">SPECIMEN</span>
+        <span id="modalSize"></span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn danger" id="modalRemove">Remove photo</button>
+        <button class="btn" id="modalClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file inputs trigger native camera/gallery on tap -->
+  <input type="file" id="rowPhotoInput" accept="image/*" capture="environment" hidden />
+  <input type="file" id="gapPhotoInput" accept="image/*" capture="environment" hidden />
+
+  <script>
+  /* =====================================================================
+     CORE LOGIC
+     ===================================================================== */
+
+  const IN_TO_MM = 25.4;
+  const STORAGE_KEY = 'trackfit.state.v1';
+
+  /**
+   * Track-system presets. All lengths are stored internally in millimeters.
+   * To add a new system, append an entry here. The UI picks it up automatically.
+   *
+   * NOTE: piece dimensions should be verified against manufacturer
+   * documentation before shipping. Sources used so far:
+   *  - Lionel FasTrack: legacystation.com / Lionel layout designer chart
+   *  - Atlas HO Code 83: Atlas "Straight Track Assortment" + standard sizes
+   *  - Kato Unitrack (N): nscale.net / Kato catalog
+   *  TODO: add Bachmann EZ-Track, Märklin C-Track, Lionel O27, Atlas True-Track.
+   */
+  const PRESETS = {
+    'lionel-fastrack': {
+      name: 'Lionel FasTrack (O)',
+      unit: 'in',
+      pieces: [
+        { label: '1 3/8" fitter',   length_in: 1.375, qty: 4 },
+        { label: '1 3/4" straight', length_in: 1.75,  qty: 4 },
+        { label: '4 1/2" straight', length_in: 4.5,   qty: 4 },
+        { label: '5" straight',     length_in: 5,     qty: 4 },
+        { label: '10" straight',    length_in: 10,    qty: 4 }
+      ]
+    },
+    'atlas-ho': {
+      name: 'Atlas HO Code 83',
+      unit: 'in',
+      pieces: [
+        { label: '3/4" fitter',     length_in: 0.75, qty: 2 },
+        { label: '1" fitter',       length_in: 1,    qty: 2 },
+        { label: '1 1/4" fitter',   length_in: 1.25, qty: 2 },
+        { label: '1 1/2" fitter',   length_in: 1.5,  qty: 2 },
+        { label: '2" fitter',       length_in: 2,    qty: 2 },
+        { label: '2 1/2" fitter',   length_in: 2.5,  qty: 2 },
+        { label: '6" straight',     length_in: 6,    qty: 4 },
+        { label: '9" straight',     length_in: 9,    qty: 4 }
+      ]
+    },
+    'kato-unitrack-n': {
+      name: 'Kato Unitrack (N)',
+      unit: 'mm',
+      pieces: [
+        { label: 'S29 (29.5mm)', length_mm: 29.5, qty: 4 },
+        { label: 'S45 (45.5mm)', length_mm: 45.5, qty: 4 },
+        { label: 'S62 (62mm)',   length_mm: 62,   qty: 4 },
+        { label: 'S64 (64mm)',   length_mm: 64,   qty: 4 },
+        { label: 'S124 (124mm)', length_mm: 124,  qty: 4 },
+        { label: 'S186 (186mm)', length_mm: 186,  qty: 4 },
+        { label: 'S248 (248mm)', length_mm: 248,  qty: 4 }
+      ]
+    }
+  };
+
+  /**
+   * Bounded subset sum solver, plus near-miss tracking.
+   *
+   * Returns: {
+   *   solutions:  combos within ±tolerance of target, sorted best-first
+   *   bestUnder:  the largest total that's still UNDER target (= what's already
+   *               in your box that gets you closest to the gap, leaving a
+   *               specific shortfall to fill with one new piece)
+   *   bestOver:   the smallest total that overshoots target+tolerance
+   * }
+   *
+   * Pruning makes this fast for typical inventories (≤ 12 piece types, qty ≤ 30).
+   */
+  function findCombinations(items, target_mm, tolerance_mm, maxResults = 20) {
+    const valid = items.filter(it => it.length_mm > 0 && it.qty > 0);
+    const solutions = [];
+    let bestUnder = null;
+    let bestOver  = null;
+    const counts = new Array(valid.length).fill(0);
+
+    function snapshot(total) {
+      const pieceCount = counts.reduce((a, b) => a + b, 0);
+      if (pieceCount === 0) return null;
+      return {
+        pieces: valid
+          .map((it, i) => ({ ...it, count: counts[i] }))
+          .filter(p => p.count > 0),
+        total_mm: total,
+        deviation_mm: Math.abs(total - target_mm),
+        pieceCount
+      };
+    }
+
+    function recurse(idx, total) {
+      // Overshoot: track best-over, then prune.
+      if (total > target_mm + tolerance_mm) {
+        const sol = snapshot(total);
+        if (sol && (!bestOver || sol.deviation_mm < bestOver.deviation_mm ||
+                    (sol.deviation_mm === bestOver.deviation_mm && sol.pieceCount < bestOver.pieceCount))) {
+          bestOver = sol;
+        }
+        return;
+      }
+
+      if (idx === valid.length) {
+        const sol = snapshot(total);
+        if (!sol) return;
+        if (sol.deviation_mm <= tolerance_mm) {
+          solutions.push(sol);
+        } else {
+          // Within prune bound but outside tolerance ⇒ under-miss.
+          if (!bestUnder || sol.deviation_mm < bestUnder.deviation_mm ||
+              (sol.deviation_mm === bestUnder.deviation_mm && sol.pieceCount < bestUnder.pieceCount)) {
+            bestUnder = sol;
+          }
+        }
+        return;
+      }
+
+      const item = valid[idx];
+      const maxN = Math.min(
+        item.qty,
+        Math.floor((target_mm + tolerance_mm) / item.length_mm)
+      );
+      for (let n = 0; n <= maxN; n++) {
+        counts[idx] = n;
+        recurse(idx + 1, total + n * item.length_mm);
+      }
+      counts[idx] = 0;
+    }
+
+    recurse(0, 0);
+
+    solutions.sort((a, b) => {
+      if (Math.abs(a.deviation_mm - b.deviation_mm) > 1e-6) {
+        return a.deviation_mm - b.deviation_mm;
+      }
+      return a.pieceCount - b.pieceCount;
+    });
+
+    return { solutions: solutions.slice(0, maxResults), bestUnder, bestOver };
+  }
+
+  /* =====================================================================
+     STATE & PERSISTENCE
+     ===================================================================== */
+
+  let unit = 'in';
+  let inventory = [];   // [{ label, length_mm, qty, photo? }]
+  let gapPhoto = null;  // data URL or null
+
+  let saveTimer = null;
+  function persist() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try {
+        const state = {
+          unit,
+          inventory,
+          gapPhoto,
+          target: document.getElementById('targetInput').value,
+          tolerance: document.getElementById('toleranceInput').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn('Trackfit: could not persist state', e);
+      }
+    }, 250);
+  }
+
+  function loadPersisted() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+      if (!state || !Array.isArray(state.inventory)) return false;
+      unit = state.unit === 'mm' ? 'mm' : 'in';
+      inventory = state.inventory.map(p => ({
+        label: String(p.label || ''),
+        length_mm: Number(p.length_mm) || 0,
+        qty: Math.max(0, parseInt(p.qty, 10) || 0),
+        photo: p.photo || null
+      }));
+      gapPhoto = state.gapPhoto || null;
+      if (state.target != null) document.getElementById('targetInput').value = state.target;
+      if (state.tolerance != null) document.getElementById('toleranceInput').value = state.tolerance;
+      return true;
+    } catch (e) {
+      console.warn('Trackfit: could not load persisted state', e);
+      return false;
+    }
+  }
+
+  function inventoryHasPhotos() {
+    return inventory.some(it => !!it.photo) || !!gapPhoto;
+  }
+
+  /* =====================================================================
+     PHOTO HANDLING
+     =====================================================================
+     Currently the photo is purely visual / mnemonic — it helps the user
+     identify which row is which when they have many similar pieces.
+     TODO(vision): when a row photo is captured, send it to a vision-capable
+     LLM with a prompt like "Identify this model railroad track piece. Return
+     JSON {brand, system, label, nominal_length_in_or_mm}". Auto-fill the
+     row's label and length fields with the result, and let the user confirm.
+     TODO(measure): for the gap photo, if the user includes a known reference
+     object (a coin, a ruler, a known track piece), use a vision API to
+     estimate the gap's length and pre-fill targetInput.
+     ===================================================================== */
+
+  const MAX_PHOTO_DIM = 1200; // px; resize so storage stays sane
+  const PHOTO_QUALITY = 0.82;
+
+  function resizeImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not decode image'));
+        img.onload = () => {
+          const longest = Math.max(img.width, img.height);
+          const scale = longest > MAX_PHOTO_DIM ? MAX_PHOTO_DIM / longest : 1;
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          try {
+            resolve(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Single hidden inputs — re-routed dynamically so the same control serves
+  // every inventory row (and the gap photo) without polluting the DOM.
+  const rowPhotoInput = document.getElementById('rowPhotoInput');
+  const gapPhotoInput = document.getElementById('gapPhotoInput');
+  let pendingRowIdx = null;
+
+  rowPhotoInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // reset so picking the same file again still fires change
+    if (!file || pendingRowIdx == null) return;
+    const idx = pendingRowIdx; pendingRowIdx = null;
+    try {
+      const dataUrl = await resizeImage(file);
+      if (inventory[idx]) {
+        inventory[idx].photo = dataUrl;
+        renderInventory();
+        persist();
+      }
+    } catch (err) {
+      alert('Could not read that image. Try a different photo.');
+      console.error(err);
+    }
+  });
+
+  gapPhotoInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      gapPhoto = await resizeImage(file);
+      renderGapPhoto();
+      persist();
+    } catch (err) {
+      alert('Could not read that image. Try a different photo.');
+      console.error(err);
+    }
+  });
+
+  /* =====================================================================
+     PHOTO MODAL
+     ===================================================================== */
+  const modal = document.getElementById('photoModal');
+  const modalImg = document.getElementById('modalImg');
+  const modalLabel = document.getElementById('modalLabel');
+  const modalSize = document.getElementById('modalSize');
+  const modalRemove = document.getElementById('modalRemove');
+  const modalClose = document.getElementById('modalClose');
+  let modalContext = null; // { kind: 'row', idx } | { kind: 'gap' }
+
+  function openPhotoModal(ctx) {
+    modalContext = ctx;
+    let dataUrl = null, label = 'SPECIMEN', sizeText = '';
+    if (ctx.kind === 'row') {
+      const item = inventory[ctx.idx];
+      if (!item || !item.photo) return;
+      dataUrl = item.photo;
+      label = (item.label || 'SPECIMEN').toUpperCase();
+      sizeText = `${formatLength(item.length_mm)}${unit === 'in' ? '"' : 'mm'} · qty ${item.qty}`;
+    } else if (ctx.kind === 'gap') {
+      if (!gapPhoto) return;
+      dataUrl = gapPhoto;
+      label = 'GAP REFERENCE';
+      const tv = document.getElementById('targetInput').value;
+      sizeText = tv ? `target ${tv}${unit === 'in' ? '"' : 'mm'}` : '';
+    }
+    modalImg.src = dataUrl;
+    modalLabel.textContent = label;
+    modalSize.textContent = sizeText;
+    modal.classList.add('open');
+  }
+  function closePhotoModal() {
+    modal.classList.remove('open');
+    modalImg.src = '';
+    modalContext = null;
+  }
+  modalClose.onclick = closePhotoModal;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closePhotoModal(); });
+  modalRemove.onclick = () => {
+    if (!modalContext) return;
+    if (modalContext.kind === 'row') {
+      if (inventory[modalContext.idx]) {
+        inventory[modalContext.idx].photo = null;
+        renderInventory();
+      }
+    } else if (modalContext.kind === 'gap') {
+      gapPhoto = null;
+      renderGapPhoto();
+    }
+    persist();
+    closePhotoModal();
+  };
+
+  /* =====================================================================
+     UI: PRESETS
+     ===================================================================== */
+
+  const presetChips = document.getElementById('presetChips');
+  Object.entries(PRESETS).forEach(([id, preset]) => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.textContent = preset.name;
+    btn.dataset.id = id;
+    btn.onclick = () => loadPreset(id);
+    presetChips.appendChild(btn);
+  });
+
+  function loadPreset(id, opts = {}) {
+    const preset = PRESETS[id];
+    if (!preset) return;
+    if (!opts.skipConfirm && inventoryHasPhotos()) {
+      const ok = confirm(
+        `Loading "${preset.name}" will replace your current inventory and any photos you've added. Continue?`
+      );
+      if (!ok) return;
+    }
+    document.querySelectorAll('.chip').forEach(c =>
+      c.classList.toggle('active', c.dataset.id === id)
+    );
+    inventory = preset.pieces.map(p => ({
+      label: p.label,
+      length_mm: p.length_mm !== undefined ? p.length_mm : p.length_in * IN_TO_MM,
+      qty: p.qty,
+      photo: null
+    }));
+    gapPhoto = null;
+    setUnit(preset.unit);
+    renderInventory();
+    renderGapPhoto();
+    persist();
+  }
+
+  /* ----- Reset ----- */
+  document.getElementById('resetBtn').onclick = () => {
+    const ok = confirm('Reset everything? This clears your inventory, photos, and the gap.');
+    if (!ok) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    document.getElementById('targetInput').value = '';
+    document.getElementById('toleranceInput').value = '0';
+    document.getElementById('results').innerHTML = '';
+    loadPreset('lionel-fastrack', { skipConfirm: true });
+  };
+
+  /* =====================================================================
+     UI: INVENTORY
+     ===================================================================== */
+  const invRows = document.getElementById('invRows');
+
+  function formatLength(mm) {
+    if (unit === 'in') {
+      const v = mm / IN_TO_MM;
+      return parseFloat(v.toFixed(4)).toString();
+    }
+    return parseFloat(mm.toFixed(2)).toString();
+  }
+
+  function renderInventory() {
+    invRows.innerHTML = '';
+    inventory.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'inv-row';
+      const photoInner = item.photo
+        ? `<img src="${item.photo}" alt="${esc(item.label)}" />`
+        : `<span class="cam-icon">+ photo</span>
+           <span class="corner-tl"></span><span class="corner-br"></span>`;
+      row.innerHTML = `
+        <button class="photo-btn ${item.photo ? 'has-photo' : 'empty'}"
+                data-action="photo" data-idx="${idx}"
+                aria-label="${item.photo ? 'View photo' : 'Add photo'} for ${esc(item.label)}"
+                type="button">${photoInner}</button>
+        <input type="text" value="${esc(item.label)}" data-field="label" data-idx="${idx}" />
+        <input type="number" step="any" value="${formatLength(item.length_mm)}" data-field="length" data-idx="${idx}" inputmode="decimal" />
+        <input type="number" step="1" min="0" value="${item.qty}" data-field="qty" data-idx="${idx}" inputmode="numeric" />
+        <button class="icon-btn" data-action="delete" data-idx="${idx}" title="Remove" aria-label="Remove row" type="button">×</button>
+      `;
+      invRows.appendChild(row);
+    });
+
+    invRows.querySelectorAll('input').forEach(inp => {
+      inp.oninput = e => updateField(e.target);
+    });
+    invRows.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.onclick = () => {
+        inventory.splice(parseInt(btn.dataset.idx, 10), 1);
+        renderInventory();
+        persist();
+      };
+    });
+    invRows.querySelectorAll('[data-action="photo"]').forEach(btn => {
+      btn.onclick = () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const item = inventory[idx];
+        if (item && item.photo) {
+          openPhotoModal({ kind: 'row', idx });
+        } else {
+          pendingRowIdx = idx;
+          rowPhotoInput.click();
+        }
+      };
+    });
+  }
+
+  function updateField(input) {
+    const idx = parseInt(input.dataset.idx, 10);
+    const field = input.dataset.field;
+    const val = input.value;
+    if (field === 'label') {
+      inventory[idx].label = val;
+    } else if (field === 'length') {
+      const num = parseFloat(val) || 0;
+      inventory[idx].length_mm = unit === 'in' ? num * IN_TO_MM : num;
+    } else if (field === 'qty') {
+      inventory[idx].qty = Math.max(0, parseInt(val, 10) || 0);
+    }
+    persist();
+  }
+
+  document.getElementById('addRowBtn').onclick = () => {
+    inventory.push({ label: 'New piece', length_mm: 0, qty: 1, photo: null });
+    renderInventory();
+    persist();
+  };
+
+  /* ----- Gap photo render ----- */
+  function renderGapPhoto() {
+    const btn = document.getElementById('gapPhotoBtn');
+    if (gapPhoto) {
+      btn.classList.remove('empty');
+      btn.classList.add('has-photo');
+      btn.innerHTML = `<img src="${gapPhoto}" alt="Gap reference photo" />`;
+    } else {
+      btn.classList.add('empty');
+      btn.classList.remove('has-photo');
+      btn.innerHTML = `<span class="cam-icon">+ photo</span>
+                       <span class="corner-tl"></span><span class="corner-br"></span>`;
+    }
+  }
+  document.getElementById('gapPhotoBtn').onclick = () => {
+    if (gapPhoto) openPhotoModal({ kind: 'gap' });
+    else gapPhotoInput.click();
+  };
+
+  /* =====================================================================
+     UI: UNITS
+     ===================================================================== */
+  function setUnit(newUnit) {
+    unit = newUnit;
+    document.getElementById('unitInches').classList.toggle('active', unit === 'in');
+    document.getElementById('unitMm').classList.toggle('active', unit === 'mm');
+    renderInventory();
+    persist();
+  }
+  document.getElementById('unitInches').onclick = () => setUnit('in');
+  document.getElementById('unitMm').onclick = () => setUnit('mm');
+
+  // Persist target/tolerance input changes
+  ['targetInput', 'toleranceInput'].forEach(id => {
+    document.getElementById(id).addEventListener('input', persist);
+  });
+
+  /* =====================================================================
+     UI: SOLVE & RESULTS
+     ===================================================================== */
+  const COLORS = [
+    'var(--bar-1)', 'var(--bar-2)', 'var(--bar-3)', 'var(--bar-4)',
+    'var(--bar-5)', 'var(--bar-6)', 'var(--bar-7)', 'var(--bar-8)'
+  ];
+
+  document.getElementById('solveBtn').onclick = solve;
+  ['targetInput', 'toleranceInput'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') solve();
+    });
+  });
+
+  function solve() {
+    const targetVal = parseFloat(document.getElementById('targetInput').value);
+    const tolVal = parseFloat(document.getElementById('toleranceInput').value) || 0;
+    const resultsEl = document.getElementById('results');
+
+    if (!targetVal || targetVal <= 0) {
+      resultsEl.innerHTML = '<div class="empty">Enter a target gap length to solve.</div>';
+      return;
+    }
+
+    const target_mm = unit === 'in' ? targetVal * IN_TO_MM : targetVal;
+    const tolerance_mm = unit === 'in' ? tolVal * IN_TO_MM : tolVal;
+
+    const t0 = performance.now();
+    const { solutions, bestUnder, bestOver } = findCombinations(inventory, target_mm, tolerance_mm);
+    const elapsed = (performance.now() - t0).toFixed(1);
+
+    // Stable color-per-label across all solutions in this solve.
+    const labelColors = {};
+    inventory.forEach(it => {
+      if (!labelColors[it.label]) {
+        labelColors[it.label] = COLORS[Object.keys(labelColors).length % COLORS.length];
+      }
+    });
+
+    if (solutions.length === 0 && !bestUnder && !bestOver) {
+      resultsEl.innerHTML = `
+        <p class="label">No combinations found</p>
+        <div class="empty">
+          Nothing in your inventory comes close to ${esc(targetVal)}${unit === 'in' ? '"' : 'mm'}.<br />
+          Try adding pieces or shortening the target.
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+
+    if (solutions.length > 0) {
+      html += `<p class="label">${solutions.length} solution${solutions.length === 1 ? '' : 's'} · solved in ${elapsed}ms</p>`;
+      solutions.forEach(sol => {
+        html += renderResultCard(sol, labelColors, target_mm, { kind: 'fit' });
+      });
+    } else {
+      html += `<p class="label">No exact fit · nearest options</p>`;
+      if (bestUnder) {
+        html += renderResultCard(bestUnder, labelColors, target_mm, { kind: 'under' });
+      }
+      if (bestOver) {
+        html += renderResultCard(bestOver, labelColors, target_mm, { kind: 'over' });
+      }
+    }
+
+    resultsEl.innerHTML = html;
+  }
+
+  function renderResultCard(sol, labelColors, target_mm, meta) {
+    const u = unit === 'in' ? '"' : 'mm';
+    const isExact = sol.deviation_mm < 0.01;
+    const totalDisplay = unit === 'in'
+      ? parseFloat((sol.total_mm / IN_TO_MM).toFixed(4))
+      : parseFloat(sol.total_mm.toFixed(2));
+    const devDisplay = unit === 'in'
+      ? parseFloat((sol.deviation_mm / IN_TO_MM).toFixed(4))
+      : parseFloat(sol.deviation_mm.toFixed(2));
+
+    // Build segments for the visual bar.
+    const segments = [];
+    sol.pieces.forEach(p => {
+      for (let n = 0; n < p.count; n++) {
+        segments.push({ length_mm: p.length_mm, color: labelColors[p.label] || 'var(--ink-soft)', label: p.label });
+      }
+    });
+    const barTotal = segments.reduce((a, s) => a + s.length_mm, 0);
+    const barHtml = segments.map(s => {
+      const pct = (s.length_mm / barTotal * 100).toFixed(2);
+      const lenLabel = unit === 'in'
+        ? parseFloat((s.length_mm / IN_TO_MM).toFixed(2))
+        : Math.round(s.length_mm);
+      return `<div class="bar-seg" style="width:${pct}%;background:${s.color}"
+                title="${esc(s.label)}: ${lenLabel}${u}">${pct > 6 ? lenLabel : ''}</div>`;
+    }).join('');
+
+    const piecesText = sol.pieces.map(p =>
+      `<span class="pchip"><span class="swatch" style="background:${labelColors[p.label]}"></span>${p.count}× ${esc(p.label)}</span>`
+    ).join('');
+
+    const joints = sol.pieceCount - 1;
+
+    let statusClass, statusText, cardClass = 'result-card';
+    if (meta.kind === 'fit') {
+      statusClass = isExact ? 'exact' : 'close';
+      statusText = isExact ? '✓ Exact fit' : `Within ${devDisplay}${u}`;
+    } else if (meta.kind === 'under') {
+      statusClass = 'miss';
+      statusText = `Closest under · short by ${devDisplay}${u}`;
+      cardClass += ' near-miss';
+    } else {
+      statusClass = 'miss';
+      statusText = `Closest over · long by ${devDisplay}${u}`;
+      cardClass += ' near-miss';
+    }
+
+    // The actionable suggestion for under-misses: "you need a piece this big"
+    let suggestHtml = '';
+    if (meta.kind === 'under') {
+      const missing_mm = target_mm - sol.total_mm;
+      const missingDisplay = unit === 'in'
+        ? parseFloat((missing_mm / IN_TO_MM).toFixed(3))
+        : parseFloat(missing_mm.toFixed(2));
+      suggestHtml = `
+        <div class="suggest">
+          Add this combo plus a single <span class="qty">${missingDisplay}${u}</span>
+          piece to your inventory for an exact fit.
+        </div>
+      `;
+    }
+
+    return `
+      <div class="${cardClass}">
+        <div class="result-head">
+          <div>
+            <div class="result-status ${statusClass}">${statusText}</div>
+            <div class="meta">${sol.pieceCount} piece${sol.pieceCount === 1 ? '' : 's'} · ${joints} joint${joints === 1 ? '' : 's'}</div>
+          </div>
+          <div class="result-total">${totalDisplay}${u}</div>
+        </div>
+        <div class="bar">${barHtml}</div>
+        <div class="pieces-list">${piecesText}</div>
+        ${suggestHtml}
+      </div>
+    `;
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  /* =====================================================================
+     INIT
+     ===================================================================== */
+  if (loadPersisted()) {
+    // Restored from localStorage. Mark a chip as active if the inventory
+    // matches a known preset by piece signature; otherwise none active.
+    const sig = inventory.map(p => `${p.length_mm.toFixed(3)}x${p.qty}`).sort().join('|');
+    const matchId = Object.entries(PRESETS).find(([, preset]) => {
+      const psig = preset.pieces.map(p => {
+        const mm = p.length_mm !== undefined ? p.length_mm : p.length_in * IN_TO_MM;
+        return `${mm.toFixed(3)}x${p.qty}`;
+      }).sort().join('|');
+      return psig === sig;
+    });
+    if (matchId) {
+      document.querySelectorAll('.chip').forEach(c =>
+        c.classList.toggle('active', c.dataset.id === matchId[0])
+      );
+    }
+    setUnit(unit); // sync toggle UI
+    renderInventory();
+    renderGapPhoto();
+  } else {
+    loadPreset('lionel-fastrack', { skipConfirm: true });
+  }
+  </script>
+</body>
+</html>

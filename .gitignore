@@ -1,0 +1,17 @@
+# local Claude Code settings (per-user permissions; don't commit)
+.claude/settings.local.json
+
+node_modules/
+dist/
+build/
+.turbo/
+.next/
+coverage/
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+.vite/
+.cache/
+*.tsbuildinfo

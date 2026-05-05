@@ -1,0 +1,19 @@
+{
+  "name": "@trackfit/library",
+  "version": "0.3.0-dev",
+  "private": true,
+  "description": "Trackfit verified track-piece library — JSON data + TypeScript loaders for every supported track system.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./data/*": "./data/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
