@@ -32,7 +32,7 @@ import {
   DEFAULT_CURVE_TOL_LENGTH_MM,
   IN_TO_MM,
 } from "./lib/constants";
-import { formatLength, unitSuffix } from "./lib/format";
+import { formatLength, parseLengthExpression, unitSuffix } from "./lib/format";
 import { matchPresetId, presetToInventory, presetUnit } from "./lib/presets";
 import { isOnboarded, loadPrefs, setOnboarded } from "./lib/prefs";
 import {
@@ -358,7 +358,18 @@ export default function App() {
       const result = await identifyPiece(photoDataUrl, { activePresetId });
       const top = result.candidates[0];
       if (!top) return;
-      if (top.confidence >= AUTO_FILL_CONFIDENCE_THRESHOLD) {
+      // v0.3.3 — auto-fill ALSO requires that the row's label is empty
+      // OR matches the candidate's label. Margaret (focus-group P2-T3-F2)
+      // typed "Bachmann 9 inch" by hand and a confident stub silently
+      // clobbered it to "Snap-Track 9\" straight (S-9)". Silent data
+      // overwrite is the cardinal sin for tech-skeptical users; route
+      // through the confirm sheet so the user explicitly approves any
+      // label change.
+      const existingRow = inventory[idx];
+      const existingLabel = existingRow?.label?.trim() ?? "";
+      const wouldClobber =
+        existingLabel.length > 0 && existingLabel !== top.label.trim();
+      if (top.confidence >= AUTO_FILL_CONFIDENCE_THRESHOLD && !wouldClobber) {
         autoFillRowFromCandidate(idx, top);
       } else {
         setConfirmSheet({
@@ -367,17 +378,16 @@ export default function App() {
           candidates: result.candidates,
         });
       }
-      // After a successful (auto or sheet-routed) call, surface a
-      // tiny "X free photo-IDs left" hint when we're between full and
-      // empty. Shown for ~2.5s — long enough to register but short
-      // enough not to block the next photo. Premium users have
-      // remaining=Infinity and skip this entirely.
-      if (
-        Number.isFinite(quota.remaining) &&
-        quota.remaining > 0 &&
-        quota.remaining < quota.total
-      ) {
-        const msg = `${quota.remaining} free photo-ID${quota.remaining === 1 ? "" : "s"} left.`;
+      // After a successful (auto or sheet-routed) call, surface the
+      // photo-ID quota status. v0.3.3 — show on the FIRST identify too
+      // (was previously only "between full and empty", which surprised
+      // Margaret in focus-group P2-T4-F1 with a sudden gate). Premium
+      // users have remaining=Infinity and skip this entirely.
+      if (Number.isFinite(quota.remaining) && quota.remaining >= 0) {
+        const msg =
+          quota.remaining === 0
+            ? `That was your last free photo-ID. Premium unlocks unlimited.`
+            : `${quota.remaining} of ${quota.total} free photo-ID${quota.remaining === 1 ? "" : "s"} left.`;
         setQuotaToast(msg);
         window.setTimeout(() => setQuotaToast(null), 2500);
       }
@@ -496,16 +506,23 @@ export default function App() {
   /* ------------------------------------------------------------------ */
 
   const solve = () => {
-    const targetVal = parseFloat(target);
-    const tolVal = parseFloat(tolerance) || 0;
+    // v0.3.3 — accept "47cm" / "47 cm" / "470mm" / "18in" suffixes on the
+    // raw input strings. UK/European modellers (focus-group P4 Frank) think
+    // in centimetres and silently break when entering "47" with unit=mm.
+    // The suffix overrides the unit toggle for that field; bare numbers
+    // continue to use the unit toggle as before.
+    const targetParsed = parseLengthExpression(target, unit);
+    const tolParsed = parseLengthExpression(tolerance, unit);
+    const targetVal = targetParsed?.valueInUnit ?? NaN;
+    const tolVal = tolParsed?.valueInUnit ?? 0;
 
     if (!targetVal || targetVal <= 0) {
       setResults({ kind: "empty", targetVal: 0 });
       return;
     }
 
-    const target_mm = unit === "in" ? targetVal * IN_TO_MM : targetVal;
-    const tolerance_mm = unit === "in" ? tolVal * IN_TO_MM : tolVal;
+    const target_mm = targetParsed?.mm ?? (unit === "in" ? targetVal * IN_TO_MM : targetVal);
+    const tolerance_mm = tolParsed?.mm ?? (unit === "in" ? tolVal * IN_TO_MM : tolVal);
 
     // The 1D and 2D solvers accept different inventory shapes. We always
     // filter to straights + curves only — turnouts/crossings live in the

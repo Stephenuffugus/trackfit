@@ -25,8 +25,23 @@ export const BAR_COLORS: string[] = [
 ];
 
 export const DEFAULT_PRESET_ID = "lionel-fastrack";
-/** Default qty to assign to a library piece when loading a preset. */
-export const DEFAULT_PRESET_QTY = 4;
+/**
+ * Default qty to assign to a library piece when loading a preset.
+ *
+ * v0.3.3: lowered from 4 → 0 after the focus-group stress test. Real
+ * users do not own 4 of every piece in a system catalog (Walt's
+ * 150-piece FasTrack collection has 0 of most catalog SKUs); the old
+ * value forced ~30 rows of qty-editing on every preset load. With 0
+ * the user adds quantities affirmatively via the per-row qty field
+ * or the Add-piece picker (which still defaults its insertions to a
+ * non-zero qty so manually-added pieces don't ghost-attach at 0).
+ *
+ * The picker's add-or-bump path does NOT consult this constant when
+ * the row already exists — see piece-picker.ts addOrBump() — so a
+ * user who taps the same piece in the picker twice gets qty: 2, not
+ * qty: 0.
+ */
+export const DEFAULT_PRESET_QTY = 0;
 
 /**
  * Curve-solver default tolerances. The handoff specifies these as v1 values

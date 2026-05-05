@@ -11,13 +11,14 @@ import {
   searchLinksForMissingPiece,
   type MarketplaceLink,
 } from "@trackfit/marketplace";
-import type { Scale, TrackKind } from "@trackfit/library";
+import { listSystems, type Scale, type TrackKind } from "@trackfit/library";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { PREMIUM } from "../lib/env";
 import {
   FREE_MARKETPLACE_VENDOR_COUNT,
   isPremium,
 } from "../lib/premium";
+import { inferSystemForRows } from "../lib/presets";
 import type { InventoryRow, Unit } from "../lib/types";
 import { IN_TO_MM, STORAGE_KEY } from "../lib/constants";
 import { PremiumGate } from "./PremiumGate";
@@ -97,12 +98,26 @@ function readPersistedUnit(): Unit {
 }
 
 /**
- * Auto-detect the user's likely scale from their inventory radii.
- * HO inventory typically lives in the 350-700 mm range; N is 200-400 mm;
- * O is 700+ mm. We pick the scale most curves fall into. Returns "any"
- * when nothing in inventory carries a radius.
+ * Auto-detect the user's likely scale.
+ *
+ * v0.3.3 — primary signal is now the library system inferred from the
+ * inventory's labels (the `TrackSystem.scale` is authoritative); we
+ * only fall back to median-radius heuristic when no system can be
+ * inferred (manual / mixed-brand inventory). Walt's full FasTrack
+ * preset previously misdetected to OO because the median radius drops
+ * below the 800 mm O cutoff (focus-group P1-T3-F2). Reading the
+ * declared system avoids that.
  */
 function detectScale(rows: InventoryRow[]): ScaleFilter {
+  // Primary: library system → declared scale.
+  const sys = inferSystemForRows(
+    rows.map((r) => ({ label: r.label })),
+    listSystems(),
+  );
+  if (sys) return sys.scale;
+
+  // Fallback: median curve radius. HO inventory typically lives in the
+  // 350-700 mm range; N is 200-400 mm; O is 700+ mm.
   const radii = rows
     .filter((r) => r.kind === "curve" && typeof r.radius_mm === "number")
     .map((r) => r.radius_mm as number)
@@ -113,6 +128,54 @@ function detectScale(rows: InventoryRow[]): ScaleFilter {
   if (median < 450) return "HO";
   if (median < 800) return "OO";
   return "O";
+}
+
+/**
+ * Render a footprint as a unit-aware "W x D" string. Walt thinks in
+ * 4×8 ft; the original "1830 mm × 1220 mm" reading silently asked
+ * him to do mental math (focus-group P3-T2-F3). When the user's
+ * persisted unit is "in", we render feet (rounded to half-foot) for
+ * legibility; "mm" stays as integer mm.
+ */
+function formatFootprint(widthMm: number, depthMm: number, unit: Unit): string {
+  if (unit === "in") {
+    const wFt = mmToFt(widthMm);
+    const dFt = mmToFt(depthMm);
+    return `${wFt} ft × ${dFt} ft`;
+  }
+  return `${Math.round(widthMm)} mm × ${Math.round(depthMm)} mm`;
+}
+
+/** Round mm to nearest 0.5 ft for a clean "4×8" feel. */
+function mmToFt(mm: number): string {
+  const ft = mm / 25.4 / 12;
+  const rounded = Math.round(ft * 2) / 2;
+  return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+}
+
+/**
+ * Footprint chip labels. The boundary numbers are the same ones
+ * `footprintBucket` uses (SMALL_W/D, MEDIUM_W/D); we just translate
+ * them into the user's unit at render time. Imperial users get
+ * "Small (≤ 5 ft × 3 ft)"; metric users get "Small (≤ 1.5 m × 1 m)".
+ */
+function footprintChipLabels(unit: Unit): {
+  small: string;
+  medium: string;
+  large: string;
+} {
+  if (unit === "in") {
+    return {
+      small: `Small (≤ ${mmToFt(SMALL_W)} ft × ${mmToFt(SMALL_D)} ft)`,
+      medium: "Medium",
+      large: "Large",
+    };
+  }
+  return {
+    small: "Small (≤ 1.5 m × 1 m)",
+    medium: "Medium",
+    large: "Large",
+  };
 }
 
 /** Bucket a template's footprint into small/medium/large. */
@@ -374,8 +437,7 @@ function LayoutCard({
       <p className="layout-card-appeal">{suggestion.template.appeal}</p>
       <p className="layout-card-desc">{suggestion.template.description}</p>
       <p className="layout-card-footprint">
-        Footprint about {Math.round(fp.width_mm)} mm ×{" "}
-        {Math.round(fp.depth_mm)} mm
+        Footprint about {formatFootprint(fp.width_mm, fp.depth_mm, unit)}
       </p>
 
       <div className="layout-card-scorerow">
@@ -639,12 +701,15 @@ export function LayoutSuggester({ open, inventory, onClose }: Props) {
             value={footprintFilter}
             onChange={setFootprintFilter}
             counts={footprintCounts}
-            options={[
-              { value: "any", label: "Any" },
-              { value: "small", label: "Small (≤ 1.5 m × 1 m)" },
-              { value: "medium", label: "Medium" },
-              { value: "large", label: "Large" },
-            ]}
+            options={(() => {
+              const labels = footprintChipLabels(unit);
+              return [
+                { value: "any", label: "Any" },
+                { value: "small", label: labels.small },
+                { value: "medium", label: labels.medium },
+                { value: "large", label: labels.large },
+              ];
+            })()}
           />
           <ChipRow<ScaleFilter>
             label="Scale"

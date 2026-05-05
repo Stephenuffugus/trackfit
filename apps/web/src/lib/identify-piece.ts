@@ -92,15 +92,6 @@ const HO_DEFAULTS: IdentifyCandidate[] = [
   },
 ];
 
-/**
- * Pseudo-random in [-jitter, +jitter]. Not cryptographically random —
- * we just want the stub's confidences to wiggle so the UI doesn't
- * always show identical "0.91 / 0.78 / 0.62" numbers shot after shot.
- */
-function jitter(amount: number): number {
-  return (Math.random() * 2 - 1) * amount;
-}
-
 function clamp01(x: number): number {
   if (x < 0) return 0;
   if (x > 1) return 1;
@@ -194,9 +185,21 @@ function pieceToCandidate(
  * Build three stub candidates. If a preset is active, sample from
  * it so the candidates feel relevant to what the user is actually
  * inventorying. Otherwise fall back to HO Atlas Code 83 defaults.
+ *
+ * v0.3.3 — confidences are now FIXED, not jittered. Focus-group
+ * persona Margaret was getting different outcomes (auto-fill vs
+ * candidate sheet) for the same gesture because the jittered top-1
+ * straddled the AUTO_FILL_CONFIDENCE_THRESHOLD ~17% of the time.
+ * Tech-skeptical users read that variance as "the app is unreliable."
+ * The real Vision API will have content-driven variance once it's
+ * wired; the stub shouldn't pretend.
  */
 function buildStubCandidates(hint?: ContextHint): IdentifyCandidate[] {
-  const baseConfidences = [0.91, 0.78, 0.62];
+  // Top-1 is locked above the auto-fill threshold so the stub always
+  // demonstrates the magic gesture; #2 and #3 sit below threshold so
+  // they show meaningful "less sure" hierarchy in the sheet UI when
+  // the auto-fill path is bypassed (e.g. the row already had a label).
+  const baseConfidences = [0.95, 0.72, 0.55];
 
   if (hint?.activePresetId) {
     const system = listSystems().find((s) => s.id === hint.activePresetId);
@@ -206,7 +209,7 @@ function buildStubCandidates(hint?: ContextHint): IdentifyCandidate[] {
       for (let i = 0; i < picks.length; i++) {
         const c = pieceToCandidate(
           picks[i]!,
-          clamp01((baseConfidences[i] ?? 0.5) + jitter(0.03)),
+          clamp01(baseConfidences[i] ?? 0.5),
           system.name,
         );
         if (c) mapped.push(c);
@@ -217,9 +220,9 @@ function buildStubCandidates(hint?: ContextHint): IdentifyCandidate[] {
     }
   }
 
-  return HO_DEFAULTS.map((c) => ({
+  return HO_DEFAULTS.map((c, i) => ({
     ...c,
-    confidence: clamp01(c.confidence + jitter(0.03)),
+    confidence: baseConfidences[i] ?? c.confidence,
   }));
 }
 

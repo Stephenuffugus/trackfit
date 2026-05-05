@@ -153,12 +153,14 @@ export function GapCard({
           <div className="field">
             <span className="field-label">{targetLabel}</span>
             <input
-              type="number"
-              step="any"
-              placeholder="e.g. 13.5"
+              type="text"
+              inputMode="decimal"
+              placeholder={`e.g. 13.5${unit === "mm" ? " or 47cm" : ""}`}
               value={target}
               onChange={(e) => onTargetChange(e.target.value)}
               onKeyDown={handleKey}
+              autoComplete="off"
+              aria-describedby="target-cm-hint"
             />
           </div>
           <div className="field">
@@ -173,14 +175,18 @@ export function GapCard({
               </span>
             </span>
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={tolerance}
               onChange={(e) => onToleranceChange(e.target.value)}
               onKeyDown={handleKey}
+              autoComplete="off"
             />
           </div>
         </div>
+        <p id="target-cm-hint" className="hint">
+          You can add "cm" to enter centimetres (e.g. "47cm").
+        </p>
 
         {gapShape === "curve" ? (
           <div className="gap-curve-row">

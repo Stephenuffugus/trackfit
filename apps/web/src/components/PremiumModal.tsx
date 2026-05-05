@@ -44,6 +44,13 @@ export function PremiumModal({ open, onClose }: Props) {
 
   const lifetimeReady = PREMIUM.lifetimeUrl.length > 0;
   const monthlyReady = PREMIUM.monthlyUrl.length > 0;
+  // v0.3.3 — when no payment URLs are configured (Stephen hasn't
+  // decided pricing yet), the modal should NOT pretend to be a
+  // shop-front. Showing two disabled "Coming soon" buttons reads
+  // as "the app can't do this" to every persona in the focus-group
+  // stress test (top-1 friction). When neither URL is set we render
+  // a calm "not on sale yet" body and a single dismiss button.
+  const anyTierReady = lifetimeReady || monthlyReady;
 
   return (
     <div
@@ -58,55 +65,54 @@ export function PremiumModal({ open, onClose }: Props) {
     >
       <div className="modal-inner">
         <p className="settings-panel__title">Trackfit Premium</p>
-        <p className="settings-row__hint">
-          More tools for the workbench. Pay once, keep forever.
-        </p>
+        {anyTierReady ? (
+          <p className="settings-row__hint">
+            More tools for the workbench. Pay once, keep forever.
+          </p>
+        ) : (
+          <p className="settings-row__hint">
+            Photo-ID, the printable inventory binder, and the full vendor
+            list will be a paid upgrade. We're still figuring out a fair
+            price — Trackfit Premium isn't on sale yet.
+          </p>
+        )}
 
-        <button
-          type="button"
-          className="settings-row settings-row--button"
-          disabled={!lifetimeReady}
-          aria-disabled={!lifetimeReady}
-          onClick={() => {
-            if (!lifetimeReady) return;
-            openExternal(PREMIUM.lifetimeUrl);
-          }}
-        >
-          <span className="settings-row__label">
-            <span className="settings-row__name">
-              Lifetime — once · {PREMIUM.lifetimePrice}
+        {lifetimeReady ? (
+          <button
+            type="button"
+            className="settings-row settings-row--button"
+            onClick={() => openExternal(PREMIUM.lifetimeUrl)}
+          >
+            <span className="settings-row__label">
+              <span className="settings-row__name">
+                Lifetime — once · {PREMIUM.lifetimePrice}
+              </span>
+              <span className="settings-row__hint">
+                Photo-ID, cloud sync, printable cut templates, marketplace
+                shortcuts.
+              </span>
             </span>
-            <span className="settings-row__hint">
-              {lifetimeReady
-                ? "Photo-ID, cloud sync, printable cut templates, marketplace shortcuts."
-                : "Coming soon."}
-            </span>
-          </span>
-        </button>
+          </button>
+        ) : null}
 
-        <button
-          type="button"
-          className="settings-row settings-row--button"
-          disabled={!monthlyReady}
-          aria-disabled={!monthlyReady}
-          onClick={() => {
-            if (!monthlyReady) return;
-            openExternal(PREMIUM.monthlyUrl);
-          }}
-        >
-          <span className="settings-row__label">
-            <span className="settings-row__name">
-              Monthly · {PREMIUM.monthlyPrice}
+        {monthlyReady ? (
+          <button
+            type="button"
+            className="settings-row settings-row--button"
+            onClick={() => openExternal(PREMIUM.monthlyUrl)}
+          >
+            <span className="settings-row__label">
+              <span className="settings-row__name">
+                Monthly · {PREMIUM.monthlyPrice}
+              </span>
+              <span className="settings-row__hint">Cancel any time.</span>
             </span>
-            <span className="settings-row__hint">
-              {monthlyReady ? "Cancel any time." : "Coming soon."}
-            </span>
-          </span>
-        </button>
+          </button>
+        ) : null}
 
         <div className="modal-actions">
           <button type="button" className="btn" onClick={onClose}>
-            No thanks
+            {anyTierReady ? "No thanks" : "Got it"}
           </button>
         </div>
       </div>

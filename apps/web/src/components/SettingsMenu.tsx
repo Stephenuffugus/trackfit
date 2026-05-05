@@ -3,7 +3,7 @@ import type { PaperSize } from "@trackfit/cut-templates";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { loadPersisted } from "../hooks/usePersistedState";
 import { downloadPdf } from "../lib/download";
-import { PREMIUM } from "../lib/env";
+import { FEEDBACK, PREMIUM } from "../lib/env";
 import {
   buildImportConfirmMessage,
   exportInventory,
@@ -438,6 +438,24 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
               </span>
             </span>
           </button>
+          {/* Discord feedback link — gated on VITE_DISCORD_FEEDBACK_URL.
+              When the env var isn't set, the row simply doesn't render,
+              keeping the menu clean before the server exists. */}
+          {FEEDBACK.discordUrl.length > 0 ? (
+            <a
+              href={FEEDBACK.discordUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="settings-row settings-row--button"
+            >
+              <span className="settings-row__label">
+                <span className="settings-row__name">Give feedback on Discord</span>
+                <span className="settings-row__hint">
+                  Tell us what worked, what didn't, what's missing.
+                </span>
+              </span>
+            </a>
+          ) : null}
           {PREMIUM.enabled ? (
             isPremium(premiumState) ? (
               // Active-license display row. Not a button — the user

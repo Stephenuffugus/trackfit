@@ -39,3 +39,13 @@ export const PREMIUM = {
   /** Same idea for the monthly tier. Empty → "Coming soon". */
   monthlyUrl: asString(import.meta.env.VITE_PREMIUM_MONTHLY_URL),
 };
+
+/**
+ * Discord invite URL for the tester feedback channel. Empty string =
+ * the "Give feedback" row simply doesn't render. Set
+ * VITE_DISCORD_FEEDBACK_URL to a Discord invite (e.g.
+ * https://discord.gg/abcdef) when the server is ready.
+ */
+export const FEEDBACK = {
+  discordUrl: asString(import.meta.env.VITE_DISCORD_FEEDBACK_URL),
+};
