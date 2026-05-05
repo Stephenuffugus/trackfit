@@ -17,7 +17,13 @@ import {
   savePrefs,
   setOnboarded,
 } from "../lib/prefs";
+import {
+  deactivate as deactivatePremium,
+  isPremium,
+  loadPremium,
+} from "../lib/premium";
 import type { InventoryRow } from "../lib/types";
+import { LicenseActivation } from "./LicenseActivation";
 import { PremiumModal } from "./PremiumModal";
 
 // pdf-lib is ~250KB. The cut-template button already lazy-loads it for the
@@ -71,6 +77,28 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
   // Premium upsell modal. Whole feature is gated by VITE_PREMIUM_ENABLED;
   // when the flag is off the row never renders, so this state never flips.
   const [premiumOpen, setPremiumOpen] = useState(false);
+
+  // License activation modal — separate from the upsell modal so the
+  // user can land here directly via the "I have a license code" row.
+  const [licenseOpen, setLicenseOpen] = useState(false);
+
+  // Cached premium snapshot. We re-read on every render of this panel
+  // to keep the row label in sync with activation events. The reads
+  // are cheap (a single localStorage hit) and only happen while the
+  // panel is open.
+  const [premiumState, setPremiumState] = useState(() => loadPremium());
+  const refreshPremium = () => setPremiumState(loadPremium());
+
+  // Listen for the global "open upgrade" event fired by <PremiumGate>
+  // instances scattered through the app. Keeps the modal's open state
+  // co-located with its host (Settings) without prop-drilling through
+  // four layers of children. Documented in PremiumGate's call-sites.
+  useEffect(() => {
+    if (!PREMIUM.enabled) return;
+    const onUpgrade = () => setPremiumOpen(true);
+    window.addEventListener("trackfit:open-upgrade", onUpgrade);
+    return () => window.removeEventListener("trackfit:open-upgrade", onUpgrade);
+  }, []);
 
   // Focus trap. Even though the panel is technically a popover (not a
   // full modal), the same accessibility rules apply once it's open:
@@ -170,6 +198,15 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
   const inventoryEmpty = inventory.length === 0;
 
   const onPrintInventory = async () => {
+    // Insurance-grade PDF report is a Premium feature. The button
+    // stays visible (discoverability matters — older audiences scan
+    // the menu before tapping anything), but the PDF generation is
+    // gated. Tapping while non-premium opens the upgrade modal.
+    if (PREMIUM.enabled && !isPremium(premiumState)) {
+      setPrintOpen(false);
+      setPremiumOpen(true);
+      return;
+    }
     setPrintBusy(true);
     setPrintError(null);
     try {
@@ -322,6 +359,18 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
             aria-disabled={inventoryEmpty}
             onClick={() => {
               if (inventoryEmpty) return;
+              // Insurance-grade PDF is a Premium feature. The button
+              // stays visible at all times (discoverability), but
+              // tapping it without an active license opens the
+              // upgrade modal directly — skipping the paper-size
+              // popover, which would otherwise tease them only to
+              // hit the gate one click later.
+              if (PREMIUM.enabled && !isPremium(premiumState)) {
+                setOpen(false);
+                setPrintOpen(false);
+                setPremiumOpen(true);
+                return;
+              }
               setPrintOpen((v) => !v);
               setPrintError(null);
             }}
@@ -390,32 +439,107 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
             </span>
           </button>
           {PREMIUM.enabled ? (
-            <button
-              type="button"
-              className="settings-row settings-row--button"
-              onClick={() => {
-                // Close the panel before opening the modal so we don't
-                // stack two focus traps. The modal owns focus from the
-                // moment it opens.
-                setOpen(false);
-                setPremiumOpen(true);
-              }}
-            >
-              <span className="settings-row__label">
-                <span className="settings-row__name">Trackfit Premium</span>
-                <span className="settings-row__hint">
-                  Photo-ID, cloud sync, and printable cut templates.
+            isPremium(premiumState) ? (
+              // Active-license display row. Not a button — the user
+              // shouldn't accidentally tap into the upsell flow when
+              // they're already paid up. The "Deactivate" link below
+              // is the only interactive element.
+              <div className="settings-row">
+                <span className="settings-row__label">
+                  <span
+                    className="settings-row__name"
+                    style={{ color: "var(--good)" }}
+                  >
+                    Premium ✦ active
+                  </span>
+                  <span className="settings-row__hint">
+                    {premiumState.activated_at
+                      ? `Activated ${premiumState.activated_at.slice(0, 10)}.`
+                      : "All paid features unlocked."}
+                    {" "}
+                    <button
+                      type="button"
+                      // Reuse the .btn styling but inline-size it like
+                      // a link. No new CSS — the only inline tweaks are
+                      // padding/border/font reset to make it look like
+                      // body copy, all using existing tokens.
+                      onClick={() => {
+                        const ok = window.confirm(
+                          "Turn off Premium on this device? You can re-activate later with the same code.",
+                        );
+                        if (!ok) return;
+                        deactivatePremium();
+                        refreshPremium();
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        font: "inherit",
+                        color: "var(--accent)",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Deactivate
+                    </button>
+                  </span>
                 </span>
-              </span>
-            </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="settings-row settings-row--button"
+                  onClick={() => {
+                    // Close the panel before opening the modal so we
+                    // don't stack two focus traps. The modal owns
+                    // focus from the moment it opens.
+                    setOpen(false);
+                    setLicenseOpen(true);
+                  }}
+                >
+                  <span className="settings-row__label">
+                    <span className="settings-row__name">
+                      I have a license code
+                    </span>
+                    <span className="settings-row__hint">
+                      Activate Trackfit Premium with your TFP-XXXX code.
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="settings-row settings-row--button"
+                  onClick={() => {
+                    setOpen(false);
+                    setPremiumOpen(true);
+                  }}
+                >
+                  <span className="settings-row__label">
+                    <span className="settings-row__name">Trackfit Premium</span>
+                    <span className="settings-row__hint">
+                      Photo-ID, cloud sync, and printable cut templates.
+                    </span>
+                  </span>
+                </button>
+              </>
+            )
           ) : null}
         </div>
       )}
       {PREMIUM.enabled ? (
-        <PremiumModal
-          open={premiumOpen}
-          onClose={() => setPremiumOpen(false)}
-        />
+        <>
+          <PremiumModal
+            open={premiumOpen}
+            onClose={() => setPremiumOpen(false)}
+          />
+          <LicenseActivation
+            open={licenseOpen}
+            onClose={() => setLicenseOpen(false)}
+            onActivated={refreshPremium}
+          />
+        </>
       ) : null}
     </div>
   );

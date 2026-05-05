@@ -5,6 +5,12 @@ import {
   searchLinksForMissingPiece,
 } from "@trackfit/marketplace";
 import type { Scale } from "@trackfit/library";
+import { PREMIUM } from "../lib/env";
+import {
+  FREE_MARKETPLACE_VENDOR_COUNT,
+  isPremium,
+} from "../lib/premium";
+import { PremiumGate } from "./PremiumGate";
 
 /**
  * Inline "Where to buy" panel for the SUGGESTED missing-piece callout.
@@ -14,10 +20,11 @@ import type { Scale } from "@trackfit/library";
  *     which knows how to build a query string from kind/length/radius/arc.
  *   - query (raw string)         → falls through to searchLinks directly.
  *
- * Renders the top 4 vendors by default, with a "Show 4 more" disclosure for
- * the rest. Each link opens in a new tab. The rationale prints under each
- * link in IBM Plex Mono italic — matches the bill-of-lading vibe of the
- * surrounding SUGGESTED frame.
+ * Free users see the top FREE_MARKETPLACE_VENDOR_COUNT vendors plus a
+ * Premium upsell strip; premium users see the full ranked list. Each
+ * link opens in a new tab. The rationale prints under each link in IBM
+ * Plex Mono italic — matches the bill-of-lading vibe of the surrounding
+ * SUGGESTED frame.
  */
 
 interface SystemHint {
@@ -65,8 +72,19 @@ export function MarketplaceLinks({ missingPiece, query, systemHint }: Props) {
 
   if (links.length === 0) return null;
 
-  const visible = showAll ? links : links.slice(0, VISIBLE_BY_DEFAULT);
-  const hiddenCount = links.length - VISIBLE_BY_DEFAULT;
+  // Free-tier cap. When premium is disabled at the build level
+  // (VITE_PREMIUM_ENABLED unset), behave like everyone is premium so
+  // we don't hide vendors from free preview deployments.
+  const premiumActive = !PREMIUM.enabled || isPremium();
+  const freeCap = FREE_MARKETPLACE_VENDOR_COUNT;
+  const cappedLinks = premiumActive ? links : links.slice(0, freeCap);
+
+  const visible = showAll ? cappedLinks : cappedLinks.slice(0, VISIBLE_BY_DEFAULT);
+  const hiddenCount = cappedLinks.length - VISIBLE_BY_DEFAULT;
+  // How many vendors the user is NOT seeing because of the gate. We
+  // surface this number in the upsell strip so the value of upgrading
+  // is concrete ("see 6 more vendors", not just "see more vendors").
+  const gatedCount = premiumActive ? 0 : Math.max(0, links.length - freeCap);
 
   return (
     <div className="marketplace-links">
@@ -103,6 +121,19 @@ export function MarketplaceLinks({ missingPiece, query, systemHint }: Props) {
             >
               Show {hiddenCount} more
             </button>
+          ) : null}
+          {gatedCount > 0 ? (
+            <PremiumGate
+              reason={`Premium unlocks ${gatedCount} more vendor${gatedCount === 1 ? "" : "s"}.`}
+              onUpgrade={() => {
+                // Bubble out to the global "open upgrade" listener
+                // installed by SettingsMenu. Keeps PremiumGate free
+                // of prop-drilling.
+                window.dispatchEvent(
+                  new CustomEvent("trackfit:open-upgrade"),
+                );
+              }}
+            />
           ) : null}
         </div>
       ) : null}

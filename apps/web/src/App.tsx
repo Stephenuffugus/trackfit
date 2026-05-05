@@ -17,7 +17,6 @@ import { PhotoModal } from "./components/PhotoModal";
 import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
 import { LayoutSuggester } from "./components/LayoutSuggester";
 import { Onboarding } from "./components/Onboarding";
-import { PremiumPricingTest } from "./components/PremiumPricingTest";
 import { CandidateConfirmSheet } from "./components/CandidateConfirmSheet";
 import { UndoToast } from "./components/UndoToast";
 import { useUndoableInventory } from "./hooks/useUndoableInventory";
@@ -41,7 +40,7 @@ import {
   identifyPiece,
   type IdentifyCandidate,
 } from "./lib/identify-piece";
-import { hasAnswered as hasPricingAnswer } from "./lib/pricing-feedback";
+import { consumePhotoIdQuota } from "./lib/premium";
 import type { GapShape, InventoryRow, Unit } from "./lib/types";
 import SolverWorker from "./workers/solver.worker.ts?worker";
 import type { SolverRequest, SolverResponse } from "./workers/solver.worker";
@@ -124,34 +123,12 @@ export default function App() {
     () => !isOnboarded(),
   );
 
-  // Layer-2 fake-door pricing test. Opens once per device, immediately
-  // after the user's first successful photo-ID auto-fill. The trigger
-  // call site lives in the photo-ID identify pipeline (Layer 1 owns
-  // apps/web/src/lib/identify-piece.ts and will call
-  // `maybeOpenPricingTest()` after a successful auto-fill).
-  // TODO: wire after Layer 1 lands — for now the helper is exported on
-  // window for the identify subagent to call into without us having to
-  // touch identify-piece.ts.
-  const [pricingTestOpen, setPricingTestOpen] = useState(false);
-  const maybeOpenPricingTest = () => {
-    if (!hasPricingAnswer("photo_id")) setPricingTestOpen(true);
-  };
-  useEffect(() => {
-    // Coordinate-by-file-boundary handoff to the Layer 1 identify
-    // subagent: they call this from their pipeline after a successful
-    // photo-ID auto-fill, without importing from App.tsx (which would
-    // create a circular module graph). Removed on unmount so HMR and
-    // tests don't leak.
-    (window as unknown as {
-      __trackfitMaybeOpenPricingTest?: () => void;
-    }).__trackfitMaybeOpenPricingTest = maybeOpenPricingTest;
-    return () => {
-      delete (window as unknown as {
-        __trackfitMaybeOpenPricingTest?: () => void;
-      }).__trackfitMaybeOpenPricingTest;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The Layer-2 fake-door pricing test that previously sat here is
+  // disabled — superseded by the Premium gate. The validation signal
+  // is now "did the user click Upgrade?" rather than "did they pick a
+  // price point on a survey?". The <PremiumPricingTest> component
+  // stays on disk for possible re-use, but it no longer renders and
+  // no window hook fires from the photo-ID path.
 
   // Photo capture pipelines — one for inventory rows, one for the gap.
   const rowCapture = usePhotoCapture();
@@ -302,15 +279,16 @@ export default function App() {
       next[idx] = merged;
       return next;
     });
-    // Layer-2 pricing-test trigger fires on the first successful
-    // auto-fill of the session. The handler exists on window because
-    // the Layer 1 wiring was originally intended to be call-site
-    // independent — this is the call site.
-    const fn = (window as unknown as {
-      __trackfitMaybeOpenPricingTest?: () => void;
-    }).__trackfitMaybeOpenPricingTest;
-    if (typeof fn === "function") fn();
+    // (Previously fired the Layer-2 pricing-test modal here. Disabled —
+    // superseded by the Premium gate; the upgrade button click is now
+    // the validation signal.)
   };
+
+  // Tiny "quota left" toast shown after a successful auto-fill when
+  // the user is on the trial. Cleared by a setTimeout so it doesn't
+  // need its own component. Premium users never see this — quota is
+  // Infinity for them.
+  const [quotaToast, setQuotaToast] = useState<string | null>(null);
 
   /**
    * Run the (stubbed) identifier on a freshly-captured photo and
@@ -318,8 +296,23 @@ export default function App() {
    * threshold opens the candidate-confirm sheet. Identification
    * failure is silent — the photo is already attached and the
    * existing manual-entry flow stays available (handoff §3).
+   *
+   * Photo-ID is a Premium feature with a 3-call lifetime free trial.
+   * Each invocation consumes one slot via `consumePhotoIdQuota()`;
+   * when the user is out, we open the upgrade modal instead. The
+   * photo is already attached at the call site (see
+   * `handleRowPhotoClick`) so the manual-entry path is unaffected
+   * by the gate — handoff §3 ("never block the user") applies even
+   * to gated features.
    */
   const runIdentifyOnRowPhoto = async (idx: number, photoDataUrl: string) => {
+    const quota = consumePhotoIdQuota();
+    if (!quota.allowed) {
+      // Out of free trials — open the upgrade modal via the same
+      // event the marketplace gate uses.
+      window.dispatchEvent(new CustomEvent("trackfit:open-upgrade"));
+      return;
+    }
     setIdentifying(true);
     try {
       const result = await identifyPiece(photoDataUrl, { activePresetId });
@@ -333,6 +326,20 @@ export default function App() {
           photoSrc: photoDataUrl,
           candidates: result.candidates,
         });
+      }
+      // After a successful (auto or sheet-routed) call, surface a
+      // tiny "X free photo-IDs left" hint when we're between full and
+      // empty. Shown for ~2.5s — long enough to register but short
+      // enough not to block the next photo. Premium users have
+      // remaining=Infinity and skip this entirely.
+      if (
+        Number.isFinite(quota.remaining) &&
+        quota.remaining > 0 &&
+        quota.remaining < quota.total
+      ) {
+        const msg = `${quota.remaining} free photo-ID${quota.remaining === 1 ? "" : "s"} left.`;
+        setQuotaToast(msg);
+        window.setTimeout(() => setQuotaToast(null), 2500);
       }
     } catch (err) {
       // Never block — the photo is already attached, manual entry works.
@@ -767,12 +774,8 @@ export default function App() {
 
       <Onboarding open={onboardingOpen} onClose={handleOnboardingClose} />
 
-      <PremiumPricingTest
-        open={pricingTestOpen}
-        feature="photo_id"
-        inventorySize={inventory.length}
-        onClose={() => setPricingTestOpen(false)}
-      />
+      {/* PremiumPricingTest disabled — superseded by Premium gate. The
+          file is preserved on disk for possible reuse. */}
 
       <CandidateConfirmSheet
         open={confirmSheet !== null}
@@ -791,6 +794,14 @@ export default function App() {
         >
           <span className="identify-toast__spinner" aria-hidden="true" />
           Identifying…
+        </div>
+      ) : null}
+
+      {quotaToast && !identifying ? (
+        // Reuses the .identify-toast surface (a small bottom-anchored
+        // pill) so the photo-ID UX stays in one visual register.
+        <div className="identify-toast" role="status" aria-live="polite">
+          {quotaToast}
         </div>
       ) : null}
 
