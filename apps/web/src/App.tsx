@@ -17,6 +17,8 @@ import { PhotoModal } from "./components/PhotoModal";
 import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
 import { LayoutSuggester } from "./components/LayoutSuggester";
 import { Onboarding } from "./components/Onboarding";
+import { PremiumPricingTest } from "./components/PremiumPricingTest";
+import { CandidateConfirmSheet } from "./components/CandidateConfirmSheet";
 import { UndoToast } from "./components/UndoToast";
 import { useUndoableInventory } from "./hooks/useUndoableInventory";
 import { usePhotoCapture } from "./hooks/usePhotoCapture";
@@ -33,7 +35,13 @@ import {
 } from "./lib/constants";
 import { formatLength, unitSuffix } from "./lib/format";
 import { matchPresetId, presetToInventory, presetUnit } from "./lib/presets";
-import { isOnboarded, setOnboarded } from "./lib/prefs";
+import { isOnboarded, loadPrefs, setOnboarded } from "./lib/prefs";
+import {
+  AUTO_FILL_CONFIDENCE_THRESHOLD,
+  identifyPiece,
+  type IdentifyCandidate,
+} from "./lib/identify-piece";
+import { hasAnswered as hasPricingAnswer } from "./lib/pricing-feedback";
 import type { GapShape, InventoryRow, Unit } from "./lib/types";
 import SolverWorker from "./workers/solver.worker.ts?worker";
 import type { SolverRequest, SolverResponse } from "./workers/solver.worker";
@@ -115,6 +123,35 @@ export default function App() {
   const [onboardingOpen, setOnboardingOpen] = useState<boolean>(
     () => !isOnboarded(),
   );
+
+  // Layer-2 fake-door pricing test. Opens once per device, immediately
+  // after the user's first successful photo-ID auto-fill. The trigger
+  // call site lives in the photo-ID identify pipeline (Layer 1 owns
+  // apps/web/src/lib/identify-piece.ts and will call
+  // `maybeOpenPricingTest()` after a successful auto-fill).
+  // TODO: wire after Layer 1 lands — for now the helper is exported on
+  // window for the identify subagent to call into without us having to
+  // touch identify-piece.ts.
+  const [pricingTestOpen, setPricingTestOpen] = useState(false);
+  const maybeOpenPricingTest = () => {
+    if (!hasPricingAnswer("photo_id")) setPricingTestOpen(true);
+  };
+  useEffect(() => {
+    // Coordinate-by-file-boundary handoff to the Layer 1 identify
+    // subagent: they call this from their pipeline after a successful
+    // photo-ID auto-fill, without importing from App.tsx (which would
+    // create a circular module graph). Removed on unmount so HMR and
+    // tests don't leak.
+    (window as unknown as {
+      __trackfitMaybeOpenPricingTest?: () => void;
+    }).__trackfitMaybeOpenPricingTest = maybeOpenPricingTest;
+    return () => {
+      delete (window as unknown as {
+        __trackfitMaybeOpenPricingTest?: () => void;
+      }).__trackfitMaybeOpenPricingTest;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Photo capture pipelines — one for inventory rows, one for the gap.
   const rowCapture = usePhotoCapture();
@@ -221,6 +258,91 @@ export default function App() {
   };
 
   /* ------------------------------------------------------------------ */
+  /* Photo-ID flow                                                      */
+  /* ------------------------------------------------------------------ */
+
+  // True while the stub identifier is running. Surfaces a tiny
+  // "Identifying…" toast at the bottom of the screen so the older user
+  // sees something happening between snap and result. Per handoff §3
+  // (never block the user) we keep the rest of the UI live.
+  const [identifying, setIdentifying] = useState(false);
+
+  // Candidate-confirm sheet state. Opens when the top-1 confidence
+  // didn't clear AUTO_FILL_CONFIDENCE_THRESHOLD; the user picks one
+  // (auto-fill happens) or punches out to manual entry.
+  const [confirmSheet, setConfirmSheet] = useState<{
+    rowIdx: number;
+    photoSrc: string;
+    candidates: IdentifyCandidate[];
+  } | null>(null);
+
+  /**
+   * Apply a chosen candidate's specs onto an inventory row. We reach
+   * past `updateField` (which only knows label/length/qty) and hit
+   * setInventory directly so kind / radius / arc / product_code can
+   * land in one atomic write.
+   */
+  const autoFillRowFromCandidate = (
+    idx: number,
+    c: IdentifyCandidate,
+  ) => {
+    setInventory((prev) => {
+      const next = prev.slice();
+      const row = next[idx];
+      if (!row) return prev;
+      const merged: InventoryRow = {
+        ...row,
+        label: c.label,
+        length_mm: c.length_mm,
+        kind: c.kind,
+      };
+      if (typeof c.radius_mm === "number") merged.radius_mm = c.radius_mm;
+      if (typeof c.arc_degrees === "number") merged.arc_degrees = c.arc_degrees;
+      if (c.product_code) merged.product_code = c.product_code;
+      next[idx] = merged;
+      return next;
+    });
+    // Layer-2 pricing-test trigger fires on the first successful
+    // auto-fill of the session. The handler exists on window because
+    // the Layer 1 wiring was originally intended to be call-site
+    // independent — this is the call site.
+    const fn = (window as unknown as {
+      __trackfitMaybeOpenPricingTest?: () => void;
+    }).__trackfitMaybeOpenPricingTest;
+    if (typeof fn === "function") fn();
+  };
+
+  /**
+   * Run the (stubbed) identifier on a freshly-captured photo and
+   * route the result. Top-1 ≥ threshold auto-fills silently; below
+   * threshold opens the candidate-confirm sheet. Identification
+   * failure is silent — the photo is already attached and the
+   * existing manual-entry flow stays available (handoff §3).
+   */
+  const runIdentifyOnRowPhoto = async (idx: number, photoDataUrl: string) => {
+    setIdentifying(true);
+    try {
+      const result = await identifyPiece(photoDataUrl, { activePresetId });
+      const top = result.candidates[0];
+      if (!top) return;
+      if (top.confidence >= AUTO_FILL_CONFIDENCE_THRESHOLD) {
+        autoFillRowFromCandidate(idx, top);
+      } else {
+        setConfirmSheet({
+          rowIdx: idx,
+          photoSrc: photoDataUrl,
+          candidates: result.candidates,
+        });
+      }
+    } catch (err) {
+      // Never block — the photo is already attached, manual entry works.
+      console.error("Trackfit: photo identification failed", err);
+    } finally {
+      setIdentifying(false);
+    }
+  };
+
+  /* ------------------------------------------------------------------ */
   /* Photo flow                                                         */
   /* ------------------------------------------------------------------ */
 
@@ -230,8 +352,36 @@ export default function App() {
     if (item.photo) {
       setModalCtx({ kind: "row", idx });
     } else {
-      rowCapture.capture((dataUrl) => setPhoto(idx, dataUrl));
+      rowCapture.capture((dataUrl) => {
+        setPhoto(idx, dataUrl);
+        // Read prefs at capture time, not at render time, so a toggle
+        // flipped while a photo dialog is open is honored.
+        const prefs = loadPrefs();
+        if (prefs.identify_on_capture) {
+          // Fire-and-forget. The toast is the user-visible signal;
+          // we don't await here so the inventory render isn't gated
+          // on the stub's 600ms delay.
+          void runIdentifyOnRowPhoto(idx, dataUrl);
+        }
+      });
     }
+  };
+
+  const handleConfirmSheetPick = (c: IdentifyCandidate) => {
+    if (!confirmSheet) return;
+    autoFillRowFromCandidate(confirmSheet.rowIdx, c);
+    setConfirmSheet(null);
+  };
+
+  const handleConfirmSheetManual = () => {
+    // No-op on the inventory: the photo stays, the row is unchanged,
+    // and the user types the specs themselves. The sheet closes via
+    // its own onClose call after this.
+    setConfirmSheet(null);
+  };
+
+  const handleConfirmSheetClose = () => {
+    setConfirmSheet(null);
   };
 
   const handleGapPhotoClick = () => {
@@ -616,6 +766,33 @@ export default function App() {
       />
 
       <Onboarding open={onboardingOpen} onClose={handleOnboardingClose} />
+
+      <PremiumPricingTest
+        open={pricingTestOpen}
+        feature="photo_id"
+        inventorySize={inventory.length}
+        onClose={() => setPricingTestOpen(false)}
+      />
+
+      <CandidateConfirmSheet
+        open={confirmSheet !== null}
+        candidates={confirmSheet?.candidates ?? []}
+        photoSrc={confirmSheet?.photoSrc ?? null}
+        onPick={handleConfirmSheetPick}
+        onManual={handleConfirmSheetManual}
+        onClose={handleConfirmSheetClose}
+      />
+
+      {identifying ? (
+        <div
+          className="identify-toast"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="identify-toast__spinner" aria-hidden="true" />
+          Identifying…
+        </div>
+      ) : null}
 
       {toast ? (
         <UndoToast

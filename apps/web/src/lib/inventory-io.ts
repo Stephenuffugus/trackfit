@@ -166,6 +166,9 @@ export function validate(input: unknown): InventoryBackup {
     out.prefs = {
       largeText: !!p.largeText,
       highContrast: !!p.highContrast,
+      // Default-on when the imported backup pre-dates the photo-ID feature.
+      identify_on_capture:
+        p.identify_on_capture === undefined ? true : !!p.identify_on_capture,
     };
   }
   if (obj.unit === "mm" || obj.unit === "in") {

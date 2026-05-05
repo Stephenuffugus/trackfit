@@ -3,6 +3,7 @@ import type { PaperSize } from "@trackfit/cut-templates";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { loadPersisted } from "../hooks/usePersistedState";
 import { downloadPdf } from "../lib/download";
+import { PREMIUM } from "../lib/env";
 import {
   buildImportConfirmMessage,
   exportInventory,
@@ -17,6 +18,7 @@ import {
   setOnboarded,
 } from "../lib/prefs";
 import type { InventoryRow } from "../lib/types";
+import { PremiumModal } from "./PremiumModal";
 
 // pdf-lib is ~250KB. The cut-template button already lazy-loads it for the
 // flex-cut PDF; reuse the same pattern here so we don't pull pdf-lib into
@@ -65,6 +67,10 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
   const [paper, setPaper] = useState<PaperSize>("letter");
   const [printBusy, setPrintBusy] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
+
+  // Premium upsell modal. Whole feature is gated by VITE_PREMIUM_ENABLED;
+  // when the flag is off the row never renders, so this state never flips.
+  const [premiumOpen, setPremiumOpen] = useState(false);
 
   // Focus trap. Even though the panel is technically a popover (not a
   // full modal), the same accessibility rules apply once it's open:
@@ -257,6 +263,24 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
               }
             />
           </label>
+          <label className="settings-row">
+            <span className="settings-row__label">
+              <span className="settings-row__name">Auto-identify photos</span>
+              <span className="settings-row__hint">
+                Guess what you photographed and fill the row for you.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={prefs.identify_on_capture}
+              onChange={(e) =>
+                setPrefs((p) => ({
+                  ...p,
+                  identify_on_capture: e.target.checked,
+                }))
+              }
+            />
+          </label>
           <button
             type="button"
             className="settings-row settings-row--button"
@@ -365,8 +389,34 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
               </span>
             </span>
           </button>
+          {PREMIUM.enabled ? (
+            <button
+              type="button"
+              className="settings-row settings-row--button"
+              onClick={() => {
+                // Close the panel before opening the modal so we don't
+                // stack two focus traps. The modal owns focus from the
+                // moment it opens.
+                setOpen(false);
+                setPremiumOpen(true);
+              }}
+            >
+              <span className="settings-row__label">
+                <span className="settings-row__name">Trackfit Premium</span>
+                <span className="settings-row__hint">
+                  Photo-ID, cloud sync, and printable cut templates.
+                </span>
+              </span>
+            </button>
+          ) : null}
         </div>
       )}
+      {PREMIUM.enabled ? (
+        <PremiumModal
+          open={premiumOpen}
+          onClose={() => setPremiumOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
