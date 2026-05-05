@@ -28,20 +28,24 @@ export const DEFAULT_PRESET_ID = "lionel-fastrack";
 /**
  * Default qty to assign to a library piece when loading a preset.
  *
- * v0.3.3: lowered from 4 → 0 after the focus-group stress test. Real
- * users do not own 4 of every piece in a system catalog (Walt's
- * 150-piece FasTrack collection has 0 of most catalog SKUs); the old
- * value forced ~30 rows of qty-editing on every preset load. With 0
- * the user adds quantities affirmatively via the per-row qty field
- * or the Add-piece picker (which still defaults its insertions to a
- * non-zero qty so manually-added pieces don't ghost-attach at 0).
+ * History:
+ *  - v0.3.0–v0.3.2: 4. Wrong for real users (no one owns 4 of every
+ *    catalog SKU) but the demo path "load preset, hit Solve" worked.
+ *  - v0.3.3: 0. Better for users editing a real inventory, but
+ *    silently broke "load preset, hit Solve" — the solver correctly
+ *    finds nothing because the user owns nothing. Stephen ran into
+ *    this immediately on his own phone.
+ *  - v0.3.5: 1. Splits the difference. The user sees "1 of each", the
+ *    solver has actual pieces to work with on a load-and-solve demo,
+ *    and the qty bumps still feel honest because nobody truly owns
+ *    "4 of every piece" but most users own at least one of each
+ *    standard piece in their system.
  *
  * The picker's add-or-bump path does NOT consult this constant when
  * the row already exists — see piece-picker.ts addOrBump() — so a
- * user who taps the same piece in the picker twice gets qty: 2, not
- * qty: 0.
+ * user who taps the same piece in the picker twice gets qty: 2.
  */
-export const DEFAULT_PRESET_QTY = 0;
+export const DEFAULT_PRESET_QTY = 1;
 
 /**
  * Curve-solver default tolerances. The handoff specifies these as v1 values
