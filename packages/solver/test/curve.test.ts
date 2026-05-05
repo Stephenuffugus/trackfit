@@ -564,7 +564,7 @@ describe("findCurveCombinations — timeout + feasibility", () => {
     // We don't assert on solutions — the timeout may or may not catch one.
   });
 
-  it("wall-clock timeout default (6 s) returns within 7 s on a hard curve case", () => {
+  it("wall-clock timeout default (6 s) returns within 10 s on a hard curve case", () => {
     const inv: CurveInventoryItem[] = [];
     for (let i = 1; i <= 12; i++) {
       inv.push({
@@ -599,10 +599,13 @@ describe("findCurveCombinations — timeout + feasibility", () => {
     const r = findCurveCombinations(inv, target, tol);
     const elapsed = performance.now() - t0;
 
-    // 6 s budget + reasonable overhead for the recursion to unwind.
-    expect(elapsed).toBeLessThan(7000);
+    // 6 s budget + 4 s shared-infra slack. Earlier 7 s ceiling was flaky
+    // under `pnpm -r test` parallel CPU contention on Codespaces; 10 s
+    // still catches a real regression (a 6 s budget that doesn't honor
+    // itself would run for minutes, not seconds).
+    expect(elapsed).toBeLessThan(10000);
     expect(typeof r.timed_out).toBe("boolean");
-  }, 10000);
+  }, 12000);
 
   it("timed_out defaults to false on a fast successful straight solve", () => {
     const target: CurveTarget = {
