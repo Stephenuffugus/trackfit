@@ -349,6 +349,104 @@ describe("findCurveCombinations — all-straight fast path", () => {
 });
 
 // ---------------------------------------------------------------------------
+// v1 turnout pathing — turnouts treated as straights of `overall_length_mm`
+// along the main route. The diverging branch is NOT modelled (v2 follow-up;
+// see TODO(v2 turnout pathing) in packages/solver/src/curve.ts).
+// ---------------------------------------------------------------------------
+describe("findCurveCombinations — v1 turnout pathing", () => {
+  it("treats an HO #4 turnout (overall_length_mm: 228.6) as a 9\" straight in pure-straight gap solving", () => {
+    // 9" straight + an HO #4 turnout's main-route length (also ~9") should
+    // exactly fit a 17" target (9 + 8 = 17 inches → 431.8 mm).
+    // 8" straight comes from the 228.6 mm turnout (≈ 9"), and we close the
+    // remaining length with the inventory's 9" straight.
+    const HO_4_MAIN_MM = 228.6; // Atlas / Peco-style HO #4 main-route length.
+    const NINE_INCH_MM = 228.6;
+    const inv: CurveInventoryItem[] = [
+      {
+        label: "HO #4 turnout",
+        kind: "turnout",
+        // length_mm on a real turnout is typically null; the solver MUST read
+        // overall_length_mm. Set length_mm to 0 here to prove that.
+        length_mm: 0,
+        overall_length_mm: HO_4_MAIN_MM,
+        divergence_degrees: 14.04,
+        qty: 1,
+      },
+      {
+        label: '9" straight',
+        kind: "straight",
+        length_mm: NINE_INCH_MM,
+        qty: 1,
+      },
+    ];
+    const target: CurveTarget = {
+      // 9" + 9" = 18" — but the doc says "9 + 8 = 17". Both reach an exact
+      // fit since the turnout's main-route length is 9", not 8". We test the
+      // 18" sum because that's what the inventory actually closes exactly.
+      length_mm: HO_4_MAIN_MM + NINE_INCH_MM,
+      lateral_offset_mm: 0,
+      angle_degrees: 0,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 1,
+      lateral_offset_mm: 1,
+      angle_degrees: 0.5,
+    };
+
+    const r = findCurveCombinations(inv, target, tol);
+
+    expect(r.solutions.length).toBeGreaterThan(0);
+    const top = r.solutions[0]!;
+    // Endpoint sits at the sum of the two pieces' lengths along the entry
+    // tangent (turnout treated as a straight of its main-route length).
+    expect(top.endpoint.x_mm).toBeCloseTo(target.length_mm, 6);
+    expect(top.endpoint.y_mm).toBeCloseTo(0, 6);
+    expect(top.endpoint.heading_degrees).toBeCloseTo(0, 6);
+    expect(top.pieceCount).toBe(2);
+    // Both pieces should appear in the solution.
+    const kinds = top.pieces.map((p) => p.kind).sort();
+    expect(kinds).toEqual(["straight", "turnout"]);
+  });
+
+  it("silently skips turnouts with overall_length_mm: null without crashing", () => {
+    const inv: CurveInventoryItem[] = [
+      {
+        label: "Mystery turnout (no published length)",
+        kind: "turnout",
+        length_mm: 0,
+        overall_length_mm: null,
+        divergence_degrees: null,
+        qty: 2,
+      },
+      {
+        label: '9" straight',
+        kind: "straight",
+        length_mm: 228.6,
+        qty: 2,
+      },
+    ];
+    const target: CurveTarget = {
+      length_mm: 457.2, // 2 × 9"
+      lateral_offset_mm: 0,
+      angle_degrees: 0,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 1,
+      lateral_offset_mm: 1,
+      angle_degrees: 0.5,
+    };
+
+    // Must not throw — the null-length turnouts are filtered out.
+    const r = findCurveCombinations(inv, target, tol);
+    expect(r.solutions.length).toBeGreaterThan(0);
+    const top = r.solutions[0]!;
+    // Closure uses 2 × 9" straight, not either of the unusable turnouts.
+    expect(top.pieceCount).toBe(2);
+    expect(top.pieces.every((p) => p.kind === "straight")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Performance — design §4.4
 // ---------------------------------------------------------------------------
 describe("findCurveCombinations — performance", () => {

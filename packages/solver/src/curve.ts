@@ -17,14 +17,25 @@ import type { InventoryItem, Solution, SolutionPiece } from "./types.js";
 export interface CurveInventoryItem {
   /** display label, used for grouping / rendering */
   label: string;
-  /** "straight" or "curve". Fitters are short straights. */
-  kind: "straight" | "curve";
+  /**
+   * "straight", "curve", or "turnout". Fitters are short straights.
+   *
+   * v1 turnout treatment: turnouts are modelled as a straight equivalent of
+   * length `overall_length_mm` along the main route. The diverging path is
+   * NOT searched — see "v2 turnout pathing" TODOs in pathLength/localExit
+   * below.
+   */
+  kind: "straight" | "curve" | "turnout";
   /** straights/fitters: nominal length, mm. curves: arc length along centerline. */
   length_mm: number;
   /** curves only: radius along centerline */
   radius_mm?: number;
   /** curves only: arc sweep, degrees (always positive; direction is per-step). */
   arc_degrees?: number;
+  /** turnouts only: overall length along main route, mm. v1 treats this as a straight length. */
+  overall_length_mm?: number | null;
+  /** turnouts only: divergence angle in degrees. Reserved for v2 turnout pathing. */
+  divergence_degrees?: number | null;
   /** how many of this piece the user owns */
   qty: number;
   /** allow extra UI metadata to ride along */
@@ -125,6 +136,16 @@ export function wrapDegrees(deg: number): number {
 /** Path length (mm) of a single piece. */
 function pathLength(p: CurveInventoryItem): number {
   if (p.kind === "straight") return p.length_mm;
+  if (p.kind === "turnout") {
+    // v1 turnout pathing: treat the turnout as a straight along its main route
+    // of length `overall_length_mm`. Pieces with no published length contribute
+    // nothing — see the validity filter in findCurveCombinations which excludes
+    // them outright. TODO(v2 turnout pathing): model the diverging exit pose so
+    // the solver can branch through the through-route AND the divergent route.
+    return typeof p.overall_length_mm === "number" && p.overall_length_mm > 0
+      ? p.overall_length_mm
+      : 0;
+  }
   // For curves prefer the canonical r·θ if both are present, else the stored length.
   if (
     typeof p.radius_mm === "number" &&
@@ -141,6 +162,21 @@ function pathLength(p: CurveInventoryItem): number {
 function localExit(p: CurveInventoryItem, dir: 1 | -1): Pose {
   if (p.kind === "straight") {
     return { x_mm: p.length_mm, y_mm: 0, heading_degrees: 0 };
+  }
+  if (p.kind === "turnout") {
+    // v1 turnout pathing: emit the same exit pose as a straight whose length
+    // equals `overall_length_mm`. This intentionally ignores the diverging
+    // route — the through-route is geometrically straight, so only the main
+    // path participates in the search. TODO(v2 turnout pathing): expose the
+    // diverging exit `(x', y', divergence_degrees)` as an alternative branch
+    // (similar to how curves expand on direction ±1). That doubles the branch
+    // factor for every turnout and is deferred until the search-space cost is
+    // understood.
+    const len =
+      typeof p.overall_length_mm === "number" && p.overall_length_mm > 0
+        ? p.overall_length_mm
+        : 0;
+    return { x_mm: len, y_mm: 0, heading_degrees: 0 };
   }
   const r = p.radius_mm ?? 0;
   const arc = p.arc_degrees ?? 0;
@@ -334,14 +370,33 @@ function solveAllStraight(
   // Convert curve-inventory items to the 1D inventory shape. Carry through the
   // full original CurveInventoryItem so that `kind`, label, etc. survive into
   // the translated solutions.
+  //
+  // v1 turnout pathing: turnouts with a published `overall_length_mm` qualify
+  // for the all-straight fast path because their through-route is geometrically
+  // a straight of that length. Length is sourced from `overall_length_mm` (NOT
+  // `length_mm`, which on a turnout is typically null). TODO(v2 turnout
+  // pathing): the diverging branch will not fit the 1D fast path — the solver
+  // will have to fall through to the 2D recursion when any turnout is selected
+  // for divergence.
   const items1d: InventoryItem[] = inv
-    .filter((it) => it.kind === "straight" && it.length_mm > 0 && it.qty > 0)
-    .map((it) => ({
-      ...it,
-      label: it.label,
-      length_mm: it.length_mm,
-      qty: it.qty,
-    }));
+    .filter((it) => {
+      if (it.qty <= 0) return false;
+      if (it.kind === "straight") return it.length_mm > 0;
+      if (it.kind === "turnout") return (it.overall_length_mm ?? 0) > 0;
+      return false;
+    })
+    .map((it) => {
+      const length =
+        it.kind === "turnout"
+          ? (it.overall_length_mm as number)
+          : it.length_mm;
+      return {
+        ...it,
+        label: it.label,
+        length_mm: length,
+        qty: it.qty,
+      };
+    });
 
   const lateralOk = Math.abs(target.lateral_offset_mm) <= tol.lateral_offset_mm + 1e-9;
   const angleOk = Math.abs(target.angle_degrees) <= tol.angle_degrees + 1e-9;
@@ -353,9 +408,17 @@ function solveAllStraight(
     for (const p of sol.pieces) {
       // Find the matching original CurveInventoryItem so we preserve any
       // extra metadata; fall back to the 1D shape if not found.
+      // Turnouts are matched by label + overall_length_mm because their
+      // `length_mm` field is typically null/0 (the real length lives on
+      // `overall_length_mm`); v1 turnout pathing translated that into the
+      // synthesized 1D piece's `length_mm` above.
       const orig =
-        inv.find((it) => it.label === p.label && it.length_mm === p.length_mm) ??
-        (p as unknown as CurveInventoryItem);
+        inv.find(
+          (it) =>
+            it.label === p.label &&
+            (it.length_mm === p.length_mm ||
+              (it.kind === "turnout" && it.overall_length_mm === p.length_mm)),
+        ) ?? (p as unknown as CurveInventoryItem);
       for (let k = 0; k < p.count; k++) {
         pieces.push({
           ...orig,
@@ -465,13 +528,19 @@ export function findCurveCombinations(
   }
 
   // Filter and sort by descending path length (design §4.3).
+  // v1 turnout pathing: keep turnouts that have a published `overall_length_mm`;
+  // they participate as straight equivalents along the main route. Drop turnouts
+  // with no published length — we don't invent a length. TODO(v2 turnout
+  // pathing): when the diverging branch is modelled, this filter will also need
+  // `divergence_degrees` to be present.
   const valid = inv.filter(
     (it) =>
       it.qty > 0 &&
       ((it.kind === "straight" && it.length_mm > 0) ||
         (it.kind === "curve" &&
           (it.radius_mm ?? 0) > 0 &&
-          (it.arc_degrees ?? 0) > 0)),
+          (it.arc_degrees ?? 0) > 0) ||
+        (it.kind === "turnout" && (it.overall_length_mm ?? 0) > 0)),
   );
   const sorted = [...valid].sort((a, b) => pathLength(b) - pathLength(a));
 
