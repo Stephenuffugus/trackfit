@@ -7,6 +7,8 @@
  * to avoid a flash-of-default-style on slow devices.
  */
 
+import { emitStorageWarning, safeSetItem } from "./storage";
+
 export const PREFS_STORAGE_KEY = "trackfit.prefs.v1";
 export const ONBOARDED_STORAGE_KEY = "trackfit.onboarded.v1";
 
@@ -50,10 +52,14 @@ export function loadPrefs(): Prefs {
 }
 
 export function savePrefs(prefs: Prefs): void {
-  try {
-    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
-  } catch {
-    /* quota or private mode — silently no-op */
+  const result = safeSetItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  if (!result.ok && (result.reason === "quota" || result.reason === "blocked")) {
+    // Prefs are tiny — a quota failure here means the rest of storage
+    // is already stuffed, so the user definitely wants to know.
+    emitStorageWarning({
+      reason: result.reason,
+      attempted_bytes: result.attempted_bytes,
+    });
   }
 }
 

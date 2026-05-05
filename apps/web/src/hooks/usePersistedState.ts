@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { TrackKind } from "@trackfit/library";
 import { STORAGE_KEY, STORAGE_KEY_V1 } from "../lib/constants";
+import { emitStorageWarning, safeSetItem } from "../lib/storage";
 import type { GapShape, InventoryRow, PersistedState } from "../lib/types";
 
 /** Mirror of TrackKind, used to validate persisted strings without importing
@@ -39,12 +40,21 @@ export function usePersistedState(state: PersistedState): void {
       window.clearTimeout(timer.current);
     }
     timer.current = window.setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {
-        // Quota exceeded with many photos is the common case. Logging is
-        // enough; the user's in-memory state still works for the session.
-        console.warn("Trackfit: could not persist state", e);
+      const result = safeSetItem(STORAGE_KEY, JSON.stringify(state));
+      if (!result.ok) {
+        // Per [P6-T5-F1]: don't swallow this. The previous console.warn
+        // wasn't visible to real users — they'd reload and find half
+        // their inventory gone. We surface the failure via the global
+        // storage-warning event; the StorageWarningToast renders it.
+        // The in-memory React state is still correct, so the user can
+        // keep working — handoff §3 (never block the user).
+        console.warn("Trackfit: could not persist state", result.error);
+        if (result.reason === "quota" || result.reason === "blocked") {
+          emitStorageWarning({
+            reason: result.reason,
+            attempted_bytes: result.attempted_bytes,
+          });
+        }
       }
     }, 250);
     return () => {

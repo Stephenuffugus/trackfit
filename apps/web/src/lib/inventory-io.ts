@@ -19,6 +19,12 @@
 
 import { STORAGE_KEY } from "./constants";
 import { PREFS_STORAGE_KEY, type Prefs } from "./prefs";
+import {
+  approximateUsedBytes,
+  emitStorageWarning,
+  safeSetItem,
+  SAFE_STORAGE_BUDGET_BYTES,
+} from "./storage";
 import type { GapShape, InventoryRow, PersistedState } from "./types";
 
 export const SCHEMA_VERSION = 1;
@@ -239,20 +245,101 @@ export function importInventory(backup: InventoryBackup): void {
     gap_offset: backup.gap?.gap_offset ?? "",
   };
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
-    if (backup.prefs) {
-      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(backup.prefs));
+  const stateResult = safeSetItem(STORAGE_KEY, JSON.stringify(persisted));
+  if (!stateResult.ok) {
+    if (
+      stateResult.reason === "quota" ||
+      stateResult.reason === "blocked"
+    ) {
+      // Surface the warning toast even though we're about to throw —
+      // the caller catches and shows an alert(), but the toast keeps
+      // the message visible after the alert is dismissed and the
+      // page hasn't reloaded.
+      emitStorageWarning({
+        reason: stateResult.reason,
+        attempted_bytes: stateResult.attempted_bytes,
+      });
     }
-  } catch {
     throw new Error(
       "Could not save the imported inventory — your browser's storage is full or blocked.",
     );
+  }
+  if (backup.prefs) {
+    const prefsResult = safeSetItem(
+      PREFS_STORAGE_KEY,
+      JSON.stringify(backup.prefs),
+    );
+    if (
+      !prefsResult.ok &&
+      (prefsResult.reason === "quota" || prefsResult.reason === "blocked")
+    ) {
+      // Inventory landed but prefs didn't fit. Don't fail the whole
+      // import — comfort prefs are recoverable from the Settings menu.
+      emitStorageWarning({
+        reason: prefsResult.reason,
+        attempted_bytes: prefsResult.attempted_bytes,
+      });
+    }
   }
 
   // Reload so App.tsx re-reads from localStorage with no half-applied state.
   window.location.reload();
 }
+
+/**
+ * Approximate the byte cost of writing a backup to localStorage. Used by
+ * the import pre-flight to surface a "this is large" confirmation BEFORE
+ * the write attempt, so a user importing a 6 MB backup on a Safari
+ * device gets a chance to bail rather than discovering the failure
+ * after the page reloads.
+ */
+export function estimateBackupBytes(backup: InventoryBackup): number {
+  // The persisted shape is a different layout from the backup file but
+  // the heavy payload (photos in `inventory[].photo`) is identical. A
+  // serialise-once measurement is cheaper than constructing the full
+  // PersistedState just to size it.
+  const proxy: PersistedState = {
+    unit: backup.unit ?? "in",
+    inventory: backup.inventory,
+    gapPhoto: null,
+    target: backup.gap?.target ?? "",
+    tolerance: backup.gap?.tolerance ?? "0",
+    gap_shape: backup.gap?.gap_shape ?? "straight",
+    gap_arc_degrees: backup.gap?.gap_arc_degrees ?? "",
+    gap_offset: backup.gap?.gap_offset ?? "",
+  };
+  const stateJson = JSON.stringify(proxy);
+  const prefsJson = backup.prefs ? JSON.stringify(backup.prefs) : "";
+  return STORAGE_KEY.length + stateJson.length +
+    PREFS_STORAGE_KEY.length + prefsJson.length;
+}
+
+/**
+ * Decide whether the user should see the "this backup is large" warning.
+ * Returns the warning text (caller appends it to the import-confirm
+ * dialog) or null if no warning is needed.
+ *
+ * Threshold: the backup itself exceeds SAFE_STORAGE_BUDGET_BYTES. Import
+ * overwrites the existing state under STORAGE_KEY, so we don't need to
+ * add current usage — but other keys (premium state, photo-id quota,
+ * onboarding flag, etc.) still cost a few bytes, well below the noise
+ * floor at this scale.
+ */
+export function buildImportSizeWarning(
+  backup: InventoryBackup,
+): string | null {
+  const bytes = estimateBackupBytes(backup);
+  if (bytes < SAFE_STORAGE_BUDGET_BYTES) return null;
+  const mb = (bytes / (1024 * 1024)).toFixed(1);
+  return (
+    `This backup is large (${mb} MB) — your phone has limited space ` +
+    `for browser apps. You can still import it, but you may need to ` +
+    `delete photos later. Continue?`
+  );
+}
+
+/** Re-export for callers that want the fixed budget. */
+export { SAFE_STORAGE_BUDGET_BYTES, approximateUsedBytes };
 
 /**
  * Read a File (typically from <input type="file">) and parse it as an
@@ -282,8 +369,14 @@ export function buildImportConfirmMessage(backup: InventoryBackup): string {
   const photoNote = hadPhotos
     ? " Photos will only transfer if they were saved with this backup."
     : " Photos won't transfer if they were originally on another device.";
+  const sizeWarning = buildImportSizeWarning(backup);
+  // Prepend the size warning so it lands first in a confirm() — older
+  // users scan top-down and a "this might break" cue belongs above the
+  // routine details. The trailing "Continue?" in the warning replaces
+  // the implicit confirm prompt without needing two dialogs.
+  const sizePrefix = sizeWarning ? `${sizeWarning}\n\n` : "";
   return (
-    `This will replace your current inventory with ${count} ${noun} ` +
-    `from ${date}.${photoNote}`
+    `${sizePrefix}This will replace your current inventory with ${count} ` +
+    `${noun} from ${date}.${photoNote}`
   );
 }
