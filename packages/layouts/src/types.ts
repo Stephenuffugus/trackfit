@@ -123,4 +123,12 @@ export interface LayoutSuggestion {
   buildable: boolean;
   /** a 1-2 sentence "why this layout" suggestion in plain English */
   rationale: string;
+  /**
+   * Number of shortfall axes (straight length, curve sweep, turnouts,
+   * crossings) where the user is short. 0 when buildable. Used as a
+   * within-score-window tiebreaker so a near-miss on one axis ranks
+   * above a near-miss spread across many. Optional so consumers can
+   * ignore it.
+   */
+  axes_short?: number;
 }

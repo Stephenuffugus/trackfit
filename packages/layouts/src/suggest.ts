@@ -26,6 +26,25 @@ import type {
 const MAX_SUGGESTIONS = 20;
 
 /**
+ * Score window inside which the axes-short tiebreaker fires. Two
+ * non-buildable suggestions whose match_score differs by no more than
+ * this are considered "close enough" that the qualitative
+ * single-axis-vs-multi-axis distinction should win out. Picked at 0.05
+ * so a meaningfully better numeric score (e.g. 0.9 vs 0.5) still wins.
+ */
+const AXES_TIEBREAKER_WINDOW = 0.05;
+
+/** Count how many shortfall axes are non-zero (0..4). */
+function countAxesShort(shortfall: LayoutShortfall): number {
+  let n = 0;
+  if (shortfall.straight_length_mm > 0) n++;
+  if (shortfall.curve_total_degrees > 0) n++;
+  if (shortfall.turnouts > 0) n++;
+  if (shortfall.crossings > 0) n++;
+  return n;
+}
+
+/**
  * Per-axis weights when normalising a shortfall into a 0..1 score.
  * Total weight is 1; an axis whose template requirement is 0 contributes 0.
  * We give length and curve sweep equal billing because most layouts depend
@@ -321,31 +340,56 @@ export function suggestLayouts(input: SuggesterInput): LayoutSuggestion[] {
       shortfall,
       buildable,
       rationale,
+      axes_short: buildable ? 0 : countAxesShort(shortfall),
     });
   }
 
-  out.sort((a, b) => {
-    // Buildable first — never bury a layout the user can build today
-    // behind one they can't.
-    if (a.buildable !== b.buildable) return a.buildable ? -1 : 1;
-    if (Math.abs(a.match_score - b.match_score) > 1e-6) {
-      return b.match_score - a.match_score;
-    }
-    // Tiebreaker among equally-scored templates: prefer the one that uses
-    // more of the user's "expensive" inventory (turnouts, then crossings,
-    // then curve sweep). Two layouts a hobbyist can both build are most
-    // helpfully ranked with the more ambitious one first — yard ladders
-    // beat plain ovals when the user also owns a pile of turnouts.
-    const ambitionScore = (s: typeof a) => {
-      const req = s.template.requirements;
-      return (
-        (req.turnouts ?? 0) * 1000 +
-        (req.crossings ?? 0) * 500 +
-        req.curve_total_degrees * 0.5 +
-        req.straight_length_mm * 0.001
-      );
-    };
-    return ambitionScore(b) - ambitionScore(a);
-  });
+  out.sort(compareSuggestions);
   return out.slice(0, MAX_SUGGESTIONS);
+}
+
+/**
+ * Comparator for two suggestions. Exported for the unit tests to
+ * exercise the rules directly without needing to engineer real
+ * inventories that produce specific score and axes-short combinations.
+ *
+ * Sort rules, in order:
+ *  1. Buildable layouts always rank first.
+ *  2. Within the not-yet-buildable cluster, when two scores are within
+ *     `AXES_TIEBREAKER_WINDOW` of each other, the one short on fewer
+ *     axes wins. This codifies the qualitative "one shopping trip away"
+ *     vs "missing things across the board" distinction.
+ *  3. Otherwise, higher score wins.
+ *  4. Final tiebreaker: ambition (more turnouts, crossings, curve, then
+ *     length).
+ */
+export function compareSuggestions(
+  a: LayoutSuggestion,
+  b: LayoutSuggestion,
+): number {
+  if (a.buildable !== b.buildable) return a.buildable ? -1 : 1;
+
+  if (!a.buildable && !b.buildable) {
+    const scoreGap = Math.abs(a.match_score - b.match_score);
+    if (scoreGap <= AXES_TIEBREAKER_WINDOW) {
+      const aAxes = a.axes_short ?? countAxesShort(a.shortfall);
+      const bAxes = b.axes_short ?? countAxesShort(b.shortfall);
+      if (aAxes !== bAxes) return aAxes - bAxes;
+    }
+  }
+
+  if (Math.abs(a.match_score - b.match_score) > 1e-6) {
+    return b.match_score - a.match_score;
+  }
+
+  const ambitionScore = (s: LayoutSuggestion) => {
+    const req = s.template.requirements;
+    return (
+      (req.turnouts ?? 0) * 1000 +
+      (req.crossings ?? 0) * 500 +
+      req.curve_total_degrees * 0.5 +
+      req.straight_length_mm * 0.001
+    );
+  };
+  return ambitionScore(b) - ambitionScore(a);
 }

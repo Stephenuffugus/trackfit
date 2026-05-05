@@ -182,7 +182,7 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     requirements: {
       straight_length_mm: 2400,
       curve_total_degrees: 0,
-      turnouts: 4,
+      turnouts: 6,
     },
     footprint: { width_mm: 2400, depth_mm: 800 },
     ascii_sketch: [
@@ -268,5 +268,229 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     style: "switching",
     complexity: 4,
     appeal: "Industrial switching puzzles — no loop, just operations.",
+  },
+
+  {
+    id: "around-the-walls",
+    name: "Around-the-walls shelf",
+    description:
+      "A long continuous loop that hugs the perimeter of a room — runs along three or four walls on a narrow shelf, with curved corners tying it together. Great if you have a basement or spare room and want a long mainline run.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 9000,
+      curve_total_degrees: 360,
+      max_curve_radius_mm: 700,
+    },
+    footprint: { width_mm: 4000, depth_mm: 3000 },
+    ascii_sketch: [
+      "    ___________________________",
+      "   /                           \\",
+      "  |                             |",
+      "  |                             |",
+      "  |                             |",
+      "   \\___________________________/",
+    ].join("\n"),
+    style: "continuous-loop",
+    complexity: 4,
+    appeal: "A long mainline that wraps the whole room — the train is always going somewhere.",
+  },
+
+  {
+    id: "branching-dogbone",
+    name: "Branching dogbone",
+    description:
+      "A dogbone mainline with a branch line peeling off at one end into a small yard. The train can run laps on the dogbone or duck off into the yard for switching — best of both worlds.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 2200,
+      curve_total_degrees: 720,
+      turnouts: 2,
+    },
+    footprint: { width_mm: 2700, depth_mm: 1100 },
+    ascii_sketch: [
+      "   _____           _____",
+      "  /     \\_________/     \\",
+      " |              Y         |",
+      "  \\_____/    Y   \\_____/",
+      "             |_________",
+      "             |_________ yard",
+    ].join("\n"),
+    style: "continuous-loop",
+    complexity: 4,
+    appeal: "Run laps or switch the yard — the dogbone with somewhere to go.",
+  },
+
+  {
+    id: "helix-staging",
+    name: "Helix with hidden staging",
+    description:
+      "A single visible loop on top, with a hidden helix — a corkscrew of curve — taking the train down to a staging level underneath. Lets you double the run length and stash trains out of sight. Build it if you have the patience for a multi-level layout.",
+    scales: ["HO", "OO", "N"],
+    requirements: {
+      straight_length_mm: 2000,
+      curve_total_degrees: 1440,
+      turnouts: 2,
+      max_curve_radius_mm: 600,
+    },
+    footprint: { width_mm: 2400, depth_mm: 1500 },
+    ascii_sketch: [
+      "    ___________________",
+      "   /                   \\",
+      "  |    ___________      |",
+      "  |   /  helix    \\     |",
+      "  |  |   (down)    |    |",
+      "  |   \\___________/     |",
+      "   \\_______Y___________/",
+      "          to staging",
+    ].join("\n"),
+    style: "showcase",
+    complexity: 5,
+    appeal: "Twice the run length and trains that vanish off-stage — model railroading at its most ambitious.",
+  },
+
+  {
+    id: "mountain-switchback",
+    name: "Mountain switchback",
+    description:
+      "A point-to-point layout climbing a mountainside by zig-zagging back and forth — the train pulls forward, stops, switches direction, and reverses up to the next leg. No loop, all operation. Modeled after real narrow-gauge logging and mining lines.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 3000,
+      curve_total_degrees: 0,
+      turnouts: 3,
+    },
+    footprint: { width_mm: 2400, depth_mm: 1500 },
+    ascii_sketch: [
+      "                       ====Y===",
+      "                      /",
+      "             ====Y===/",
+      "            /",
+      "   ====Y===/",
+      "  /",
+      "  ===========",
+    ].join("\n"),
+    style: "switching",
+    complexity: 5,
+    appeal: "Climb the grade the way the old logging lines did — forward, reverse, repeat.",
+  },
+
+  {
+    id: "t-trak-module",
+    name: "T-Trak module",
+    description:
+      "A single tabletop module built to the T-Trak modular standard — 308 mm wide and 355 mm deep, with two parallel tracks across the front. On its own it's a tiny diorama; bring it to a club meet and it joins up with everyone else's modules into a giant layout.",
+    scales: ["N"],
+    requirements: {
+      straight_length_mm: 600,
+      curve_total_degrees: 0,
+      max_curve_radius_mm: 300,
+    },
+    footprint: { width_mm: 308, depth_mm: 355 },
+    ascii_sketch: [
+      "  ======================",
+      "  ======================",
+      "                        ",
+      "  [ scenery / industry ]",
+    ].join("\n"),
+    style: "showcase",
+    complexity: 2,
+    appeal: "Build one tabletop square — bring it to a club meet, snap it into a hundred-foot layout.",
+  },
+
+  {
+    id: "inglenook-siding",
+    name: "Inglenook siding",
+    description:
+      "The classic 5-3-3 switching puzzle — three short stub tracks holding 5, 3, and 3 cars, fed by a lead long enough to handle them. Shuffle the cars into a target order. Famously addictive and fits on a bookshelf.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 1500,
+      curve_total_degrees: 0,
+      turnouts: 3,
+    },
+    footprint: { width_mm: 1500, depth_mm: 400 },
+    ascii_sketch: [
+      "  ===========Y=================",
+      "              \\=Y==============",
+      "                 \\=Y===========",
+      "                    \\==========",
+    ].join("\n"),
+    style: "switching",
+    complexity: 3,
+    appeal: "The puzzle that fits on a bookshelf — five cars, three sidings, hours gone.",
+  },
+
+  {
+    id: "timesaver",
+    name: "Timesaver",
+    description:
+      "John Allen's famous switching puzzle — a tangle of five turnouts and short sidings where the goal is to sort cars into specific spots in as few moves as possible. Bigger than an Inglenook and meaner; a stopwatch helps.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 2000,
+      curve_total_degrees: 0,
+      turnouts: 5,
+    },
+    footprint: { width_mm: 1800, depth_mm: 500 },
+    ascii_sketch: [
+      "  ====Y========Y==============",
+      "       \\        \\=Y===========",
+      "        \\=Y========\\==========",
+      "           \\=Y================",
+      "              \\===============",
+    ].join("\n"),
+    style: "switching",
+    complexity: 5,
+    appeal: "John Allen's stopwatch puzzle — five turnouts, ruthless geometry.",
+  },
+
+  {
+    id: "mining-branchline",
+    name: "Mining branchline",
+    description:
+      "A short themed switching layout — a mainline with a runaround for the road engine, a kickback spur climbing up to a mine, and a couple of industries to spot cars at. Fits on a hollow-core door, plays for hours.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 2000,
+      curve_total_degrees: 90,
+      turnouts: 4,
+    },
+    footprint: { width_mm: 2000, depth_mm: 800 },
+    ascii_sketch: [
+      "                       ___ mine",
+      "                      /",
+      "  ====Y=======Y======Y",
+      "       \\       \\======\\",
+      "        \\=Y============",
+      "           \\===========",
+    ].join("\n"),
+    style: "switching",
+    complexity: 4,
+    appeal: "A themed switching layout with a mine on the hill — operations with a story.",
+  },
+
+  {
+    id: "double-tracked-oval",
+    name: "Double-tracked oval",
+    description:
+      "Two concentric ovals with crossover turnouts between them, so a train can swap from the inner main to the outer main mid-run. Lets two trains run at once without crashing, and gives you something to actually do with the throttle.",
+    scales: null,
+    requirements: {
+      straight_length_mm: 2000,
+      curve_total_degrees: 720,
+      turnouts: 4,
+    },
+    footprint: { width_mm: 2100, depth_mm: 1400 },
+    ascii_sketch: [
+      "    _________________________",
+      "   /    _________________    \\",
+      "  |    /                 \\    |",
+      "  |   |    Y=========Y    |   |",
+      "  |    \\_________________/    |",
+      "   \\_________________________/",
+    ].join("\n"),
+    style: "continuous-loop",
+    complexity: 4,
+    appeal: "Two trains, two mains, and a crossover so they can swap lanes.",
   },
 ];
