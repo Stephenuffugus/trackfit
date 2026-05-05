@@ -60,6 +60,16 @@ function pieceToRow(p: TrackPiece): InventoryRow | null {
   }
   if (p.turnout_frog) row.turnout_frog = p.turnout_frog;
   if (p.product_code) row.product_code = p.product_code;
+  // Carry turnout / crossing geometry through so the curve solver's v1 turnout
+  // pathing (treat as a straight of `overall_length_mm`) has the data it needs.
+  // TODO(v2 turnout pathing): `divergence_degrees` is propagated now so the
+  // future diverging-branch search has zero data plumbing left to do.
+  if (typeof p.overall_length_mm === "number") {
+    row.overall_length_mm = p.overall_length_mm;
+  }
+  if (typeof p.divergence_degrees === "number") {
+    row.divergence_degrees = p.divergence_degrees;
+  }
   return row;
 }
 
@@ -71,6 +81,37 @@ export function presetToInventory(system: TrackSystem): InventoryRow[] {
 
 export function presetUnit(system: TrackSystem): Unit {
   return system.default_unit === "mm" ? "mm" : "in";
+}
+
+/**
+ * Heuristic: for a set of inventory pieces (typically the pieces in one
+ * solver Solution), find which library system they most likely came from.
+ *
+ * Match strategy: count how many of each system's piece labels appear in
+ * the inventory. Highest match count wins. Ties resolve by the system that
+ * appears first in SYSTEM_DISPLAY_ORDER (passed in as `systems`). Returns
+ * undefined when nothing matches at all.
+ *
+ * Used by the SUGGESTED callout's "Where to buy" panel to seed the
+ * marketplace search with a manufacturer hint (e.g. "Märklin"), which
+ * sharpens the vendor query and unlocks Reynaulds for European systems.
+ */
+export function inferSystemForRows(
+  rows: { label: string }[],
+  systems: TrackSystem[],
+): TrackSystem | undefined {
+  if (rows.length === 0 || systems.length === 0) return undefined;
+  const labelSet = new Set(rows.map((r) => r.label));
+  let best: { system: TrackSystem; score: number } | undefined;
+  for (const sys of systems) {
+    let score = 0;
+    for (const piece of sys.pieces) {
+      if (labelSet.has(piece.label)) score += 1;
+    }
+    if (score === 0) continue;
+    if (!best || score > best.score) best = { system: sys, score };
+  }
+  return best?.system;
 }
 
 /**

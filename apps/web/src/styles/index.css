@@ -828,6 +828,109 @@ input[type="number"]::-webkit-inner-spin-button {
   line-height: 1.4;
 }
 
+/* ----- MARKETPLACE LINKS (Where to buy) -----
+   Lives inside the SUGGESTED callout. Toggle is a quiet text-action that
+   expands a panel of vendor links — signal-red bullets, IBM Plex Mono
+   labels and rationales. Same blueprint aesthetic as the rest of the card. */
+.marketplace-links {
+  margin-top: 10px;
+}
+.marketplace-links__toggle {
+  /* Text-action, not a button-rectangle. Matches the Hide/Show in CutTemplate. */
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  font:
+    500 12px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  min-height: 28px;
+}
+.marketplace-links__toggle:hover,
+.marketplace-links__toggle:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+}
+.marketplace-links__panel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent);
+  background: rgba(178, 75, 43, 0.04);
+}
+.marketplace-links__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.marketplace-link {
+  /* Signal-red bullet on the left, content stacked vertically. */
+  position: relative;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.marketplace-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 0;
+}
+.marketplace-link__url {
+  font:
+    500 13px "IBM Plex Mono",
+    monospace;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  /* 44px target on mobile via padding rather than line-height. */
+  padding: 4px 0;
+  word-break: break-word;
+}
+.marketplace-link__url:hover,
+.marketplace-link__url:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+}
+.marketplace-link__rationale {
+  font:
+    italic 400 11px "IBM Plex Mono",
+    monospace;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+.marketplace-links__more {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  font:
+    500 11px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.marketplace-links__more:hover,
+.marketplace-links__more:focus-visible {
+  outline: none;
+  color: var(--accent);
+}
+
 /* ----- CUT TEMPLATE BUTTON ----- */
 .cut-template {
   margin-top: 10px;
@@ -1886,9 +1989,10 @@ html[data-high-contrast="true"] .photo-btn.empty {
   margin-bottom: 10px;
 }
 .layout-card-name {
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.02em;
+  font:
+    700 1.1rem "Fraunces",
+    Georgia, serif;
+  letter-spacing: 0.01em;
 }
 .layout-card-badge {
   display: inline-block;
@@ -1955,5 +2059,116 @@ html[data-high-contrast="true"] .photo-btn.empty {
 .layout-card-footprint {
   margin: 6px 0 0;
   font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+/* ----- LAYOUT SUGGESTER: filter chip rows ----- */
+.layout-suggester-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 18px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+}
+.layout-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.layout-filter-label {
+  font:
+    500 11px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  min-width: 88px;
+}
+.layout-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.layout-filter-chips .chip {
+  /* tighter chips for the filter row — less visual weight than top-of-page chips */
+  padding: 6px 10px;
+  font-size: 12px;
+  border-width: 1px;
+}
+.layout-filter-chips .chip-count {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* ----- LAYOUT CARD: appeal pitch + score row + shop expander ----- */
+.layout-card-appeal {
+  margin: 6px 0;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.layout-card-scorerow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+}
+.layout-card-shortsentence {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+.layout-card-build {
+  margin-top: 10px;
+  background: #2f8a3d;
+  color: #ffffff;
+  border-color: #2f8a3d;
+}
+.layout-card-build:hover {
+  background: #267330;
+  color: #ffffff;
+}
+.layout-card-shop {
+  margin-top: 10px;
+}
+.layout-card-shop-toggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  font:
+    600 0.9rem "IBM Plex Sans",
+    sans-serif;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.layout-card-shop-toggle:hover {
+  color: var(--accent, var(--ink-soft));
+}
+.layout-card-shop-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.layout-card-shop-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+.layout-card-shop-list a {
+  font-weight: 700;
+  color: var(--ink);
+}
+.layout-card-shop-rationale {
+  font-size: 0.82rem;
   color: var(--ink-soft);
 }

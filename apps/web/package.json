@@ -16,6 +16,7 @@
     "@trackfit/cut-templates": "workspace:*",
     "@trackfit/layouts": "workspace:*",
     "@trackfit/library": "workspace:*",
+    "@trackfit/marketplace": "workspace:*",
     "@trackfit/measure": "workspace:*",
     "@trackfit/solver": "workspace:*",
     "react": "^18.3.1",

@@ -3,10 +3,13 @@ import type {
   CurveSolution,
   Solution,
 } from "@trackfit/solver";
+import { listSystems, type Scale, type TrackSystem } from "@trackfit/library";
 import { IN_TO_MM } from "../lib/constants";
 import { unitSuffix } from "../lib/format";
+import { inferSystemForRows } from "../lib/presets";
 import type { Unit } from "../lib/types";
 import { CutTemplateButton } from "./CutTemplateButton";
+import { MarketplaceLinks } from "./MarketplaceLinks";
 
 export type ResultKind = "fit" | "under" | "over";
 
@@ -136,6 +139,13 @@ export function ResultCard({
   // Suggestion rendering ------------------------------------------------------
   // 1D path keeps the v0.2 string. Curve path consumes the solver's typed
   // CurveMissingPiece union — three flavors (straight / curve / mixed).
+  //
+  // The "Where to buy" panel needs a system hint to bias the vendor search.
+  // We infer from the solution's pieces by label-matching against the
+  // library — if every label belongs to one system, that's our hint;
+  // otherwise the most-represented system wins. inferSystemForRows handles
+  // both cases.
+  const systemHint = buildSystemHint(solution.pieces);
   let suggestNode: React.ReactNode = null;
   if (kind === "under" && !isCurve) {
     const missing_mm = target_mm - total_mm;
@@ -155,6 +165,10 @@ export function ResultCard({
           missingLengthMm={missing_mm}
           flexCandidates={flexCandidates}
         />
+        <MarketplaceLinks
+          missingPiece={{ kind: "straight", length_mm: missing_mm }}
+          systemHint={systemHint}
+        />
       </div>
     );
   } else if (kind === "under" && isCurve && curveSuggestion) {
@@ -164,6 +178,10 @@ export function ResultCard({
           suggestion={curveSuggestion}
           unit={unit}
           flexCandidates={flexCandidates}
+        />
+        <CurveSuggestionMarketplace
+          suggestion={curveSuggestion}
+          systemHint={systemHint}
         />
       </div>
     );
@@ -315,4 +333,62 @@ function CurveSuggestionBody({
   }
   // mixed
   return <>{suggestion.message}</>;
+}
+
+/**
+ * Inspect a solver Solution's pieces and return a marketplace SystemHint —
+ * { id, manufacturer, scale } — derived from whichever library system the
+ * pieces most plausibly belong to. Returns undefined when no library piece
+ * labels match (manual / cut-down inventory).
+ */
+function buildSystemHint(
+  pieces: AnySolution["pieces"],
+): { id: string; manufacturer: string; scale?: Scale } | undefined {
+  const sys: TrackSystem | undefined = inferSystemForRows(
+    pieces.map((p) => ({ label: p.label })),
+    listSystems(),
+  );
+  if (!sys) return undefined;
+  return {
+    id: sys.id,
+    manufacturer: sys.manufacturer,
+    scale: sys.scale,
+  };
+}
+
+interface CurveSuggestionMarketplaceProps {
+  suggestion: CurveMissingPiece;
+  systemHint?: { id: string; manufacturer: string; scale?: Scale };
+}
+
+/**
+ * Wraps MarketplaceLinks for the curve-suggestion union. The `mixed` flavor
+ * doesn't expose a single piece to search for, so we suppress the panel
+ * there — clutter beats utility for a multi-piece composite suggestion.
+ */
+function CurveSuggestionMarketplace({
+  suggestion,
+  systemHint,
+}: CurveSuggestionMarketplaceProps) {
+  if (suggestion.kind === "straight") {
+    return (
+      <MarketplaceLinks
+        missingPiece={{ kind: "straight", length_mm: suggestion.length_mm }}
+        systemHint={systemHint}
+      />
+    );
+  }
+  if (suggestion.kind === "curve") {
+    return (
+      <MarketplaceLinks
+        missingPiece={{
+          kind: "curve",
+          radius_mm: suggestion.radius_mm,
+          arc_degrees: suggestion.arc_degrees,
+        }}
+        systemHint={systemHint}
+      />
+    );
+  }
+  return null;
 }

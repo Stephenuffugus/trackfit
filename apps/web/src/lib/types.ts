@@ -37,6 +37,10 @@ export interface InventoryRow {
   arc_degrees?: number;
   /** turnouts only — frog number e.g. "#4", "#6", "Y" */
   turnout_frog?: string | null;
+  /** turnouts/crossings — overall length along main route, mm */
+  overall_length_mm?: number | null;
+  /** turnouts only — divergence angle in degrees (reserved for v2 pathing) */
+  divergence_degrees?: number | null;
   /** manufacturer SKU when known (passed through from library JSON) */
   product_code?: string | null;
   /** the solver's InventoryItem accepts arbitrary pass-through metadata */

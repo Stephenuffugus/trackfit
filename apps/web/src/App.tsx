@@ -341,11 +341,21 @@ export default function App() {
         tolerance_mm,
       };
     } else {
-      // 2D path — straights + curves only. The curve solver enforces this
-      // contract; passing a turnout would just be ignored.
+      // 2D path — straights, curves, and turnouts. v1 turnout pathing treats a
+      // turnout as a straight equivalent of length `overall_length_mm` along
+      // the main route (the diverging route is NOT searched yet — see TODO(v2
+      // turnout pathing) in packages/solver/src/curve.ts). Turnouts with no
+      // published `overall_length_mm` are dropped here so the solver never
+      // sees a zero-length piece.
       const items: CurveInventoryItem[] = inventory
         .filter((row) => {
           const k = row.kind;
+          if (k === "turnout") {
+            return (
+              typeof row.overall_length_mm === "number" &&
+              (row.overall_length_mm ?? 0) > 0
+            );
+          }
           return (
             k === "curve" ||
             k === undefined ||
@@ -366,6 +376,19 @@ export default function App() {
               length_mm: row.length_mm,
               radius_mm: row.radius_mm as number,
               arc_degrees: row.arc_degrees as number,
+              qty: row.qty,
+            };
+          }
+          if (row.kind === "turnout") {
+            const overall = row.overall_length_mm as number;
+            return {
+              label: row.label,
+              kind: "turnout" as const,
+              // length_mm carries the through-route length so any consumer that
+              // still treats the piece as a straight gets the right number.
+              length_mm: overall,
+              overall_length_mm: overall,
+              divergence_degrees: row.divergence_degrees ?? null,
               qty: row.qty,
             };
           }
@@ -510,7 +533,7 @@ export default function App() {
   return (
     <>
       <div className="wrap">
-        <Header />
+        <Header inventory={inventory} />
 
         <section className="app-section">
           <p className="label">Load a track system</p>

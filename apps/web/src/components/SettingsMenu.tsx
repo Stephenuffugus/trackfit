@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import type { PaperSize } from "@trackfit/cut-templates";
+import { loadPersisted } from "../hooks/usePersistedState";
+import { downloadPdf } from "../lib/download";
+import {
+  buildImportConfirmMessage,
+  exportInventory,
+  importInventory,
+  readBackupFile,
+} from "../lib/inventory-io";
 import {
   applyPrefsToDocument,
   loadPrefs,
@@ -6,24 +15,56 @@ import {
   savePrefs,
   setOnboarded,
 } from "../lib/prefs";
+import type { InventoryRow } from "../lib/types";
+
+// pdf-lib is ~250KB. The cut-template button already lazy-loads it for the
+// flex-cut PDF; reuse the same pattern here so we don't pull pdf-lib into
+// the main bundle just because someone opened the settings menu.
+const renderInventoryReport = async (
+  ...args: Parameters<
+    typeof import("@trackfit/cut-templates").renderInventoryReport
+  >
+) => {
+  const mod = await import("@trackfit/cut-templates");
+  return mod.renderInventoryReport(...args);
+};
+
+interface SettingsMenuProps {
+  /** Current inventory rows, used by the "Print inventory report" action. */
+  inventory: InventoryRow[];
+}
 
 /**
  * Comfort-settings panel. A small gear button in the header opens a
- * dropdown panel with three controls:
+ * dropdown panel with the user's "I might want to do this once" controls:
  *
- *   - Bigger text  (toggles `data-large-text` on <html>)
- *   - High contrast (toggles `data-high-contrast` on <html>)
- *   - Show intro again (clears the onboarding flag and reloads)
+ *   - Bigger text       (toggles `data-large-text` on <html>)
+ *   - High contrast     (toggles `data-high-contrast` on <html>)
+ *   - Export / import   (JSON backup file)
+ *   - Print inventory   (insurance-grade PDF binder)
+ *   - Show intro again  (clears the onboarding flag and reloads)
  *
  * Toggle state persists to `trackfit.prefs.v1`. Initial application
  * happens at boot in main.tsx so the document never flashes the
  * default theme.
+ *
+ * The print-inventory action lives here, not in the inventory header,
+ * because it's a once-a-year action for insurance / estate documentation —
+ * not a daily-use button that should crowd the main surface.
  */
-export function SettingsMenu() {
+export function SettingsMenu({ inventory }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Print-inventory sub-state. Kept inside this component so the popover
+  // closes cleanly when the menu closes.
+  const [printOpen, setPrintOpen] = useState(false);
+  const [paper, setPaper] = useState<PaperSize>("letter");
+  const [printBusy, setPrintBusy] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
 
   // Persist + reflect to the document on every change.
   useEffect(() => {
@@ -31,7 +72,8 @@ export function SettingsMenu() {
     savePrefs(prefs);
   }, [prefs]);
 
-  // Click-outside to close.
+  // Click-outside to close. Also closes the print sub-popover so we never
+  // have a hidden popover open after the menu collapses.
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
@@ -43,10 +85,14 @@ export function SettingsMenu() {
         !buttonRef.current.contains(target)
       ) {
         setOpen(false);
+        setPrintOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        setPrintOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
@@ -61,6 +107,97 @@ export function SettingsMenu() {
     // Easiest way to re-trigger the first-run modal cleanly is to
     // reload — App reads the flag once at mount.
     window.location.reload();
+  };
+
+  const handleExport = () => {
+    // Pull the latest persisted state straight from localStorage so any
+    // un-debounced edits in flight are still captured. loadPersisted()
+    // returns null when the user has never typed anything; in that case
+    // we ship an empty inventory rather than confusing them with an alert.
+    const state = loadPersisted() ?? {
+      unit: "in" as const,
+      inventory: [],
+      gapPhoto: null,
+      target: "",
+      tolerance: "0",
+      gap_shape: "straight" as const,
+      gap_arc_degrees: "",
+      gap_offset: "",
+    };
+    exportInventory(state, prefs);
+    setOpen(false);
+  };
+
+  const handleImportClick = () => {
+    // Trigger the hidden <input type="file">. The actual work happens in
+    // handleFileChange when the browser's picker resolves.
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so re-selecting the same file fires onChange again.
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const backup = await readBackupFile(file);
+      const ok = window.confirm(buildImportConfirmMessage(backup));
+      if (!ok) return;
+      // importInventory() reloads the page on success; nothing after this
+      // line will run in the success path.
+      importInventory(backup);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Could not import that file.";
+      window.alert(`Import failed: ${message}`);
+    }
+  };
+
+  const inventoryEmpty = inventory.length === 0;
+
+  const onPrintInventory = async () => {
+    setPrintBusy(true);
+    setPrintError(null);
+    try {
+      // Map the app's InventoryRow shape onto the renderer's row shape.
+      // The renderer accepts `kind?: string` so we don't have to leak the
+      // library's TrackKind union into pdf-land. We sanitize numeric
+      // fields here so the renderer never sees NaN/undefined arithmetic.
+      const rows = inventory.map((r) => ({
+        label: r.label,
+        kind: r.kind,
+        length_mm:
+          typeof r.length_mm === "number" && Number.isFinite(r.length_mm)
+            ? r.length_mm
+            : null,
+        radius_mm:
+          typeof r.radius_mm === "number" && Number.isFinite(r.radius_mm)
+            ? r.radius_mm
+            : null,
+        arc_degrees:
+          typeof r.arc_degrees === "number" && Number.isFinite(r.arc_degrees)
+            ? r.arc_degrees
+            : null,
+        qty: r.qty,
+        photo: r.photo,
+        product_code: r.product_code ?? null,
+      }));
+      const isoDate = new Date().toISOString().slice(0, 10);
+      const result = await renderInventoryReport({
+        rows,
+        paper_size: paper,
+        generated_at: isoDate,
+      });
+      downloadPdf(result.pdf, `trackfit-inventory-${isoDate}.pdf`);
+      setPrintOpen(false);
+      setOpen(false);
+    } catch (e) {
+      setPrintError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPrintBusy(false);
+    }
   };
 
   return (
@@ -114,6 +251,102 @@ export function SettingsMenu() {
               }
             />
           </label>
+          <button
+            type="button"
+            className="settings-row settings-row--button"
+            onClick={handleExport}
+          >
+            <span className="settings-row__label">
+              <span className="settings-row__name">Export my inventory</span>
+              <span className="settings-row__hint">
+                Save a backup file you can email to yourself.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="settings-row settings-row--button"
+            onClick={handleImportClick}
+          >
+            <span className="settings-row__label">
+              <span className="settings-row__name">Import inventory…</span>
+              <span className="settings-row__hint">
+                Replace your inventory from a saved backup file.
+              </span>
+            </span>
+          </button>
+          {/* Hidden picker — the visible button above clicks it. */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: "none" }}
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            className="settings-row settings-row--button"
+            disabled={inventoryEmpty}
+            aria-disabled={inventoryEmpty}
+            onClick={() => {
+              if (inventoryEmpty) return;
+              setPrintOpen((v) => !v);
+              setPrintError(null);
+            }}
+          >
+            <span className="settings-row__label">
+              <span className="settings-row__name">Print inventory report</span>
+              <span className="settings-row__hint">
+                {inventoryEmpty
+                  ? "Add some pieces first"
+                  : "PDF binder of every piece you own."}
+              </span>
+            </span>
+          </button>
+          {printOpen && !inventoryEmpty ? (
+            <div className="cut-template-popover settings-print-popover">
+              <p className="field-label">Paper</p>
+              <div className="unit-toggle cut-template-paper">
+                <button
+                  type="button"
+                  className={paper === "letter" ? "active" : ""}
+                  onClick={() => setPaper("letter")}
+                >
+                  Letter
+                </button>
+                <button
+                  type="button"
+                  className={paper === "a4" ? "active" : ""}
+                  onClick={() => setPaper("a4")}
+                >
+                  A4
+                </button>
+              </div>
+              {printError ? (
+                <p className="cut-template-error">{printError}</p>
+              ) : null}
+              <div className="cut-template-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setPrintOpen(false)}
+                  disabled={printBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn cut-template-submit"
+                  onClick={onPrintInventory}
+                  disabled={printBusy}
+                >
+                  {printBusy ? "Generating…" : "Generate PDF"}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <button
             type="button"
             className="settings-row settings-row--button"
