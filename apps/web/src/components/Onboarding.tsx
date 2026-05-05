@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   open: boolean;
@@ -77,10 +78,25 @@ export function Onboarding({ open, onClose }: Props) {
     else onClose();
   };
 
+  // Focus trap. ESC is already handled by the keydown effect above
+  // (alongside arrow-key navigation), so we don't pass onEscape here —
+  // doing so would double-fire. Initial focus lands on the dialog
+  // container itself rather than the first focusable child — the DOM
+  // order puts the close (×) button first, and we don't want a stray
+  // Enter on modal-open to silently dismiss onboarding for an older
+  // user who hasn't read it yet. The trap still restores focus to the
+  // settings menu's "Show intro again" button (or the inventory's
+  // help button on first run) on close.
+  const trapRef = useFocusTrap<HTMLDivElement>({
+    enabled: open,
+    initialFocus: "container",
+  });
+
   if (!open) return null;
 
   return (
     <div
+      ref={trapRef}
       className="modal open onboarding-modal"
       role="dialog"
       aria-modal="true"

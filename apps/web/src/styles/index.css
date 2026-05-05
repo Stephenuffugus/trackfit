@@ -121,6 +121,8 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1.5px solid var(--ink);
   color: var(--ink);
   padding: 8px 14px;
+  /* 44px hit target — older fingers on glass. WCAG 2.5.5 / Apple HIG. */
+  min-height: 44px;
   cursor: pointer;
   transition:
     background 0.15s,
@@ -2093,8 +2095,12 @@ html[data-high-contrast="true"] .photo-btn.empty {
   gap: 6px;
 }
 .layout-filter-chips .chip {
-  /* tighter chips for the filter row — less visual weight than top-of-page chips */
-  padding: 6px 10px;
+  /* tighter chips for the filter row — less visual weight than top-of-page chips.
+     Padding is bumped from the v0.3 6px/10px values so the hit target reaches
+     44px (the .chip rule above sets min-height; this just keeps the padding
+     consistent with that). Font stays smaller so the chip row still reads as
+     "filter" not "primary action". */
+  padding: 10px 12px;
   font-size: 12px;
   border-width: 1px;
 }
@@ -2137,13 +2143,17 @@ html[data-high-contrast="true"] .photo-btn.empty {
 .layout-card-shop-toggle {
   background: none;
   border: 0;
-  padding: 0;
+  /* 44px hit target — text-only button still needs a finger-sized target.
+     Padding is asymmetric so the visible underline still hugs the text. */
+  padding: 12px 0;
+  min-height: 44px;
   font:
     600 0.9rem "IBM Plex Sans",
     sans-serif;
   color: var(--ink);
   cursor: pointer;
   text-decoration: underline;
+  text-align: left;
 }
 .layout-card-shop-toggle:hover {
   color: var(--accent, var(--ink-soft));

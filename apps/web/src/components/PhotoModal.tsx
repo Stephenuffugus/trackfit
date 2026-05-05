@@ -1,3 +1,5 @@
+import { useFocusTrap } from "../hooks/useFocusTrap";
+
 interface Props {
   open: boolean;
   src: string | null;
@@ -8,8 +10,9 @@ interface Props {
 }
 
 /**
- * Full-size photo viewer. Click the dimmed backdrop or the Close button to
- * dismiss; Remove deletes the photo from the underlying state.
+ * Full-size photo viewer. Click the dimmed backdrop, press ESC, or hit
+ * the Close button to dismiss; Remove deletes the photo from the
+ * underlying state.
  */
 export function PhotoModal({
   open,
@@ -19,8 +22,22 @@ export function PhotoModal({
   onClose,
   onRemove,
 }: Props) {
+  // Trap Tab cycling inside the modal and restore focus to the photo
+  // thumbnail (or whichever button opened the modal) on close. Initial
+  // focus lands on the dialog container itself, NOT on the first
+  // button — that first button is "Remove photo" (destructive), and
+  // an accidental Enter on modal-open would silently delete the
+  // image. The user must tab once to reach Remove, which is the
+  // safer default for the older audience.
+  const containerRef = useFocusTrap<HTMLDivElement>({
+    enabled: open,
+    onEscape: onClose,
+    initialFocus: "container",
+  });
+
   return (
     <div
+      ref={containerRef}
       className={`modal${open ? " open" : ""}`}
       role="dialog"
       aria-modal="true"

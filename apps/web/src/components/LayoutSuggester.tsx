@@ -12,6 +12,7 @@ import {
   type MarketplaceLink,
 } from "@trackfit/marketplace";
 import type { Scale, TrackKind } from "@trackfit/library";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { InventoryRow, Unit } from "../lib/types";
 import { IN_TO_MM, STORAGE_KEY } from "../lib/constants";
 
@@ -549,10 +550,20 @@ export function LayoutSuggester({ open, inventory, onClose }: Props) {
     });
   }, [allSuggestions, styleFilter, footprintFilter]);
 
+  // Focus trap + ESC + focus restoration. Lands initial focus on the
+  // first focusable inside the modal — that's the first filter chip.
+  // Acceptable; older users tab forward into the cards naturally from
+  // there. Closing returns focus to the "What can I build?" CTA.
+  const trapRef = useFocusTrap<HTMLDivElement>({
+    enabled: open,
+    onEscape: onClose,
+  });
+
   if (!open) return null;
 
   return (
     <div
+      ref={trapRef}
       className="modal open layout-suggester-modal"
       role="dialog"
       aria-modal="true"

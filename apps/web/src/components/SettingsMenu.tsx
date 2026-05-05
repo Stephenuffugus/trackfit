@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { PaperSize } from "@trackfit/cut-templates";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { loadPersisted } from "../hooks/usePersistedState";
 import { downloadPdf } from "../lib/download";
 import {
@@ -55,7 +56,6 @@ interface SettingsMenuProps {
 export function SettingsMenu({ inventory }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
-  const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +66,19 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
   const [printBusy, setPrintBusy] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
 
+  // Focus trap. Even though the panel is technically a popover (not a
+  // full modal), the same accessibility rules apply once it's open:
+  // Tab cycling stays inside, ESC closes, focus returns to the gear
+  // button on close. The trap's onEscape replaces the previous
+  // standalone keydown listener so we don't double-handle the key.
+  const panelRef = useFocusTrap<HTMLDivElement>({
+    enabled: open,
+    onEscape: () => {
+      setOpen(false);
+      setPrintOpen(false);
+    },
+  });
+
   // Persist + reflect to the document on every change.
   useEffect(() => {
     applyPrefsToDocument(prefs);
@@ -73,7 +86,8 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
   }, [prefs]);
 
   // Click-outside to close. Also closes the print sub-popover so we never
-  // have a hidden popover open after the menu collapses.
+  // have a hidden popover open after the menu collapses. ESC handling
+  // moved to the focus-trap hook above.
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
@@ -88,19 +102,11 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
         setPrintOpen(false);
       }
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setPrintOpen(false);
-      }
-    };
     document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, panelRef]);
 
   const replayIntro = () => {
     setOnboarded(false);

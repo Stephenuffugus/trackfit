@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { pixelDistance, type Point, type ReferenceObject } from "@trackfit/measure";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { MeasureCanvas, defaultEndpointsFor } from "./MeasureCanvas";
 import { MeasureToolbar } from "./MeasureToolbar";
 import { ReviewPanel } from "./ReviewPanel";
@@ -69,15 +70,13 @@ export function GapMeasureOverlay({
     };
   }, [open]);
 
-  // Escape to cancel.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  // Focus trap + ESC + focus restoration. The trap's onEscape replaces
+  // the previous standalone keydown listener, so ESC still closes the
+  // overlay — same UX, plus Tab cycling now stays inside.
+  const trapRef = useFocusTrap<HTMLDivElement>({
+    enabled: open,
+    onEscape: onClose,
+  });
 
   // Decode the photo to learn its natural dimensions. We need them so
   // default-endpoint placement lands inside the visible photo regardless
@@ -207,6 +206,7 @@ export function GapMeasureOverlay({
   if (!photoSrc) {
     return (
       <div
+        ref={trapRef}
         className="modal open measure-overlay"
         role="dialog"
         aria-modal="true"
@@ -234,6 +234,7 @@ export function GapMeasureOverlay({
 
   return (
     <div
+      ref={trapRef}
       className="modal open measure-overlay"
       role="dialog"
       aria-modal="true"
