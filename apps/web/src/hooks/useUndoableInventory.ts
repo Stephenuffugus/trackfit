@@ -76,6 +76,16 @@ export function useUndoableInventory(
         if (field === "label") {
           next[idx] = { ...row, label: value };
         } else if (field === "length") {
+          // Curves, turnouts, and crossings derive their length from
+          // catalog geometry (radius·arc, frog/divergence). The InventoryRow
+          // renders these as read-only with a lock glyph, but defend the
+          // data layer too — ignore writes to length on non-straight rows.
+          const editable =
+            row.kind === undefined ||
+            row.kind === "straight" ||
+            row.kind === "fitter" ||
+            row.kind === "flex";
+          if (!editable) return prev;
           const num = parseFloat(value) || 0;
           next[idx] = {
             ...row,

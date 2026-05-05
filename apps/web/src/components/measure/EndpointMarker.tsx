@@ -31,13 +31,13 @@ interface Props {
  *
  * Two concentric shapes:
  *   - 18px visible filled circle (the part the user sees)
- *   - 40px transparent circle covering it (the part the user can hit)
+ *   - 44px transparent circle covering it (the part the user can hit)
  *
  * The bigger hit zone is non-negotiable. The audience is over 60 and
  * fingers, especially in winter basements, are not stylus-precise. The
- * Apple HIG minimum is 44px for primary actions; we round down because
- * we have two markers per pair and want them close enough to mark short
- * objects (a quarter is ~24mm, ~80px in a tight crop).
+ * Apple HIG minimum is 44px for primary actions and we honor it; the
+ * tradeoff is that on tight crops two markers can overlap, but pointer
+ * capture means the latest pointerdown wins so it's still usable.
  *
  * Pointer events are used (not touch + mouse separately) so a single code
  * path covers iOS Safari, Android Chrome, and desktop. Pointer capture is
@@ -99,8 +99,8 @@ export function EndpointMarker({
       aria-label={ariaLabel ?? `Drag endpoint ${label}`}
       role="slider"
     >
-      {/* Hit zone — invisible, 40px diameter (20px radius). */}
-      <circle cx={point.x} cy={point.y} r={20} fill="transparent" />
+      {/* Hit zone — invisible, 44px diameter (22px radius). */}
+      <circle cx={point.x} cy={point.y} r={22} fill="transparent" />
       {/* Visible marker — 18px diameter (9px radius), with a 2px white halo
           so it stays legible against busy photo backgrounds. */}
       <circle

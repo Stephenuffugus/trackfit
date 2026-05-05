@@ -21,7 +21,9 @@ import type {
 } from "./types.js";
 
 /** Maximum number of suggestions returned by `suggestLayouts`. */
-const MAX_SUGGESTIONS = 8;
+// Keep this >= the catalog size so scale-pinned templates never get sliced
+// off the end. The UI is responsible for any visual top-N truncation.
+const MAX_SUGGESTIONS = 20;
 
 /**
  * Per-axis weights when normalising a shortfall into a 0..1 score.
@@ -228,8 +230,9 @@ function buildRationale(
       if (have >= need * 1.1) parts.push("more than enough curve");
       else parts.push(`just enough curve for the ${need}° loop`);
     }
-    if ((tpl.requirements.turnouts ?? 0) > 0) {
-      parts.push(`the ${tpl.requirements.turnouts} turnout${tpl.requirements.turnouts === 1 ? "" : "s"} this layout needs`);
+    const turnoutsReq = tpl.requirements.turnouts ?? 0;
+    if (turnoutsReq > 0) {
+      parts.push(`the ${turnoutsReq} turnout${turnoutsReq === 1 ? "" : "s"} this layout needs`);
     }
     if (parts.length === 0) {
       return `You have everything you need to build the ${tpl.name.toLowerCase()}.`;
@@ -325,7 +328,24 @@ export function suggestLayouts(input: SuggesterInput): LayoutSuggestion[] {
     // Buildable first — never bury a layout the user can build today
     // behind one they can't.
     if (a.buildable !== b.buildable) return a.buildable ? -1 : 1;
-    return b.match_score - a.match_score;
+    if (Math.abs(a.match_score - b.match_score) > 1e-6) {
+      return b.match_score - a.match_score;
+    }
+    // Tiebreaker among equally-scored templates: prefer the one that uses
+    // more of the user's "expensive" inventory (turnouts, then crossings,
+    // then curve sweep). Two layouts a hobbyist can both build are most
+    // helpfully ranked with the more ambitious one first — yard ladders
+    // beat plain ovals when the user also owns a pile of turnouts.
+    const ambitionScore = (s: typeof a) => {
+      const req = s.template.requirements;
+      return (
+        (req.turnouts ?? 0) * 1000 +
+        (req.crossings ?? 0) * 500 +
+        req.curve_total_degrees * 0.5 +
+        req.straight_length_mm * 0.001
+      );
+    };
+    return ambitionScore(b) - ambitionScore(a);
   });
   return out.slice(0, MAX_SUGGESTIONS);
 }

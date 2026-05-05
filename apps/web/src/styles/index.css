@@ -252,14 +252,122 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--accent);
 }
 
+/* ----- INVENTORY FILTER CHIPS ----- */
+.inv-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.inv-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-elev);
+  border: 1.5px solid var(--ink);
+  font:
+    500 12px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 36px;
+}
+.inv-filter:hover {
+  background: var(--ink);
+  color: var(--bg-elev);
+}
+.inv-filter--active {
+  background: var(--ink);
+  color: var(--bg-elev);
+}
+.inv-filter__count {
+  font-size: 10px;
+  opacity: 0.75;
+  letter-spacing: 0.05em;
+}
+.inv-empty-filter {
+  padding: 22px 12px;
+  text-align: center;
+  font:
+    500 14px "Fraunces",
+    serif;
+  font-style: italic;
+  color: var(--ink-soft);
+  border: 1px dashed var(--rule);
+}
+.text-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 /* ----- INVENTORY ROW ----- */
 .inv-row {
   display: grid;
-  grid-template-columns: 56px 1fr 88px 64px 28px;
+  /* Delete column is 44px so the icon-btn's enlarged hit area
+     (44x44 per WCAG 2.5.5) isn't clipped. */
+  grid-template-columns: 56px 1fr 100px 64px 44px;
   gap: 8px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px dashed var(--rule);
+}
+.inv-label-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.inv-subscript {
+  font:
+    500 10px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+.inv-length-cell {
+  display: flex;
+  min-width: 0;
+}
+.inv-length-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed var(--rule);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 4px,
+      rgba(26, 34, 56, 0.04) 4px 5px
+    ),
+    var(--bg);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  color: var(--ink-soft);
+  width: 100%;
+  min-width: 0;
+}
+.inv-lock {
+  flex-shrink: 0;
+  color: var(--brass);
+}
+.inv-length-readonly__value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.section-subhead {
+  font:
+    500 13px "IBM Plex Sans",
+    sans-serif;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+  line-height: 1.45;
 }
 .inv-row:last-of-type {
   border-bottom: none;
@@ -377,7 +485,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .unit-toggle button {
   background: var(--bg-elev);
   border: none;
-  padding: 6px 14px;
+  /* 44px minimum hit target — the visible label stays the same size,
+     padding does the lifting. */
+  min-height: 44px;
+  padding: 10px 16px;
   font:
     500 12px "IBM Plex Mono",
     monospace;
@@ -403,8 +514,168 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: pointer;
   transition: background 0.15s;
 }
-.solve:hover {
+.solve:hover:not(:disabled) {
   background: var(--ink);
+}
+.solve:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+.solve--busy {
+  background: var(--ink);
+}
+.solve-busy-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+.solve-spinner {
+  animation: solve-spin 0.9s linear infinite;
+}
+@keyframes solve-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ----- GAP SHAPE PICKER ----- */
+.gap-shape {
+  border: 1px dashed var(--rule);
+  padding: 10px 12px 12px;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gap-shape legend {
+  padding: 0 6px;
+}
+.gap-shape__opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  background: var(--bg);
+  cursor: pointer;
+  min-height: 44px;
+}
+.gap-shape__opt:hover {
+  border-color: var(--ink);
+}
+.gap-shape__opt--active {
+  border-color: var(--accent);
+  background: rgba(178, 75, 43, 0.06);
+}
+.gap-shape__opt input[type="radio"] {
+  width: auto;
+  margin: 4px 0 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.gap-shape__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gap-shape__title {
+  font:
+    600 14px "IBM Plex Sans",
+    sans-serif;
+  color: var(--ink);
+}
+.gap-shape__blurb {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+/* ----- ARC PICKER (curve gap shape) ----- */
+.gap-curve-row {
+  margin-top: 8px;
+}
+.gap-curve-row > .field-label {
+  display: block;
+  margin-bottom: 8px;
+}
+.arc-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: stretch;
+}
+.arc-chip {
+  padding: 8px 12px;
+  background: var(--bg-elev);
+  border: 1.5px solid var(--ink);
+  font:
+    500 12px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 40px;
+}
+.arc-chip:hover {
+  background: var(--ink);
+  color: var(--bg-elev);
+}
+.arc-chip--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-elev);
+}
+.arc-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 110px;
+}
+.arc-custom .field-label {
+  font-size: 9px;
+}
+.arc-custom input {
+  min-height: 40px;
+}
+
+/* ----- OFFSET / S-CURVE ROW ----- */
+.gap-offset-row {
+  margin-top: 8px;
+}
+.offset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.offset-row input {
+  flex: 1;
+}
+.gap-offset-glyph {
+  flex-shrink: 0;
+  color: var(--brass);
+}
+
+/* ----- HELP ICON ----- */
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  color: var(--ink-soft);
+  cursor: help;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.help-icon:hover {
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 /* ----- RESULTS ----- */
@@ -483,6 +754,21 @@ input[type="number"]::-webkit-inner-spin-button {
 .bar-seg:last-child {
   border-right: none;
 }
+.bar-seg--curve {
+  /* faint diagonal hatch on top of the piece color so curves read as
+     "different shape" without changing the per-label palette. */
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.18) 0 3px,
+    transparent 3px 6px
+  );
+}
+.bar-seg__glyph {
+  font-size: 12px;
+  margin-right: 3px;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+}
 
 .pieces-list {
   font-family: "IBM Plex Mono", monospace;
@@ -529,6 +815,17 @@ input[type="number"]::-webkit-inner-spin-button {
     700 18px "Fraunces",
     serif;
   color: var(--accent);
+}
+.suggest-warning {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--brass);
+  background: rgba(154, 123, 63, 0.08);
+  font:
+    500 12px "IBM Plex Sans",
+    sans-serif;
+  color: var(--ink);
+  line-height: 1.4;
 }
 
 /* ----- CUT TEMPLATE BUTTON ----- */
@@ -667,7 +964,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .btn {
   background: var(--bg);
   border: 1.5px solid var(--ink);
-  padding: 8px 14px;
+  /* 44px hit target for modal close / remove and other secondary actions. */
+  min-height: 44px;
+  padding: 10px 16px;
   font:
     500 12px "IBM Plex Mono",
     monospace;
@@ -694,7 +993,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: inline-flex;
   align-items: center;
   margin-top: 10px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   background: var(--bg);
   border: 1.5px solid var(--ink);
   font:
@@ -704,7 +1003,7 @@ input[type="number"]::-webkit-inner-spin-button {
   text-transform: uppercase;
   color: var(--ink);
   cursor: pointer;
-  min-height: 40px;
+  min-height: 44px;
 }
 .measure-cta:hover:not(:disabled) {
   background: var(--ink);
@@ -1042,6 +1341,16 @@ header.app-header {
   padding-bottom: 18px;
   margin-bottom: 28px;
 }
+header.app-header .app-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+header.app-header .app-header__row .eyebrow {
+  margin-bottom: 0;
+}
 header.app-header .eyebrow {
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;
@@ -1093,8 +1402,29 @@ section.app-section {
 
 /* ----- MOBILE ----- */
 @media (max-width: 520px) {
+  .arc-picker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .arc-chip {
+    width: 100%;
+    text-align: left;
+    min-height: 48px;
+  }
+  .arc-custom {
+    min-width: 0;
+  }
+  .gap-shape__opt {
+    min-height: 48px;
+  }
+  .inv-filter {
+    min-height: 40px;
+    padding: 6px 10px;
+  }
   .inv-row {
-    grid-template-columns: 48px 1fr 28px;
+    /* 44px for the delete column so the icon-btn's hit area isn't
+       clipped on mobile. */
+    grid-template-columns: 48px 1fr 44px;
     grid-template-areas:
       "photo label  delete"
       "photo length qty";
@@ -1131,4 +1461,499 @@ section.app-section {
     width: 80px;
     height: 80px;
   }
+}
+
+/* =========================================================================
+   SETTINGS MENU (gear in header)
+   ========================================================================= */
+.settings-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.settings-trigger {
+  background: none;
+  border: none;
+  padding: 11px;
+  /* Big hit target — finger on glass. The visible gear is 22px; the
+     transparent padding takes the click area to 44x44. */
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  transition: color 0.15s;
+}
+.settings-trigger:hover,
+.settings-trigger:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 280px;
+  max-width: 320px;
+  background: var(--bg-elev);
+  border: 1.5px solid var(--ink);
+  padding: 14px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Bill-of-lading shadow — subtle, in-aesthetic. */
+  box-shadow: 4px 4px 0 rgba(26, 34, 56, 0.08);
+}
+.settings-panel__title {
+  margin: 0 0 4px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* 44px target. */
+  min-height: 44px;
+  padding: 6px 4px;
+  border-bottom: 1px dashed var(--rule);
+  cursor: pointer;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+}
+.settings-row:last-child {
+  border-bottom: none;
+}
+.settings-row--button {
+  width: 100%;
+  cursor: pointer;
+}
+.settings-row--button:hover .settings-row__name {
+  color: var(--accent);
+}
+.settings-row__label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-row__name {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.settings-row__hint {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.3;
+}
+.settings-row input[type="checkbox"] {
+  /* native checkbox — accent color makes it match the brand. */
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* =========================================================================
+   ONBOARDING MODAL
+   ========================================================================= */
+.onboarding-modal {
+  /* Reuses .modal positioning + backdrop. */
+}
+.onboarding-inner {
+  width: min(560px, 92vw);
+  padding: 28px 28px 22px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--bg-elev);
+  border: 1.5px solid var(--ink);
+}
+.onboarding-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  /* 44x44 hit zone. */
+  width: 44px;
+  height: 44px;
+  font-size: 24px;
+  color: var(--ink-soft);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.onboarding-close:hover {
+  color: var(--accent);
+}
+.onboarding-cards {
+  min-height: 280px;
+}
+.onboarding-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.onboarding-card .eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+.onboarding-card h2 {
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  font-size: clamp(26px, 5vw, 34px);
+  line-height: 1.05;
+  margin: 0;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.onboarding-body {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0;
+}
+.onboarding-body--hint {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.onboarding-blueprint {
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  border: 1px dashed var(--rule);
+  background: var(--bg);
+}
+.onboarding-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.onboarding-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rule);
+  display: inline-block;
+}
+.onboarding-dots span.active {
+  background: var(--accent);
+}
+.onboarding-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+.onboarding-arrow {
+  background: var(--bg);
+  border: 1.5px solid var(--ink);
+  /* 44x44 — explicit. */
+  width: 48px;
+  height: 48px;
+  font: 500 22px "IBM Plex Mono", monospace;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.onboarding-arrow:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--bg-elev);
+}
+.onboarding-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.onboarding-primary {
+  flex: 1;
+  background: var(--accent);
+  color: var(--bg-elev);
+  border: 1.5px solid var(--accent);
+  /* Generous tap target — the hero CTA per card. */
+  min-height: 52px;
+  padding: 12px 18px;
+  font: 700 16px "Fraunces", serif;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.onboarding-primary:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* =========================================================================
+   UNDO TOAST
+   ========================================================================= */
+.undo-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 200;
+  background: var(--bg-elev);
+  border: 1.5px solid var(--accent);
+  padding: 12px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 4px 4px 0 rgba(26, 34, 56, 0.12);
+  animation: undo-toast-in 0.18s ease-out;
+}
+@keyframes undo-toast-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.undo-toast__msg {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.35;
+}
+.undo-toast__action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  /* 44px hit zone. */
+  min-height: 44px;
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+.undo-toast__action:hover {
+  color: var(--ink);
+}
+
+/* =========================================================================
+   COMFORT PREFERENCES
+   ========================================================================= */
+
+/* Bigger text — bumps body / inputs / labels / result totals by ~25%.
+   Scoped to the html attribute so the prefs apply before React paints. */
+html[data-large-text="true"] body {
+  font-size: 17px;
+}
+html[data-large-text="true"] input[type="text"],
+html[data-large-text="true"] input[type="number"] {
+  font-size: 17px;
+  padding: 10px 12px;
+}
+html[data-large-text="true"] .label {
+  font-size: 13px;
+}
+html[data-large-text="true"] .field-label {
+  font-size: 12px;
+}
+html[data-large-text="true"] .result-total {
+  font-size: 30px;
+}
+html[data-large-text="true"] header.app-header .tagline {
+  font-size: 18px;
+}
+html[data-large-text="true"] .hint,
+html[data-large-text="true"] .section-subhead {
+  font-size: 16px;
+}
+html[data-large-text="true"] .pieces-list {
+  font-size: 16px;
+}
+html[data-large-text="true"] .onboarding-body {
+  font-size: 18px;
+}
+html[data-large-text="true"] .undo-toast__msg {
+  font-size: 16px;
+}
+
+/* High contrast — preserves the brand accent + Fraunces/IBM Plex but
+   trades cream for white and tightens the dashed rule. */
+html[data-high-contrast="true"] {
+  --bg: #ffffff;
+  --bg-elev: #ffffff;
+  --ink: #000000;
+  --ink-soft: #2a2a2a;
+  --rule: #555555;
+}
+html[data-high-contrast="true"] body {
+  /* Drop the pale grid — it muddies pure white at high contrast. */
+  background: var(--bg);
+}
+html[data-high-contrast="true"] .photo-btn.empty {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 4px,
+      rgba(0, 0, 0, 0.16) 4px 5px
+    ),
+    var(--bg);
+}
+
+/* =========================================================================
+   LAYOUT SUGGESTER
+   ========================================================================= */
+.layout-suggester-cta-section {
+  text-align: center;
+}
+.layout-suggester-cta {
+  width: 100%;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 14px 16px;
+}
+.layout-suggester-modal .modal-inner.layout-suggester-inner {
+  max-width: 720px;
+  width: calc(100% - 24px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+}
+.layout-suggester-head h2 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.layout-suggester-head .hint {
+  margin: 0 0 16px;
+}
+.layout-suggester-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.layout-card {
+  border: 1px solid var(--rule);
+  padding: 14px;
+  background: var(--bg);
+}
+.layout-card.buildable {
+  border-color: #2f8a3d;
+  border-width: 2px;
+}
+.layout-card.close {
+  border-color: #b07d00;
+}
+.layout-card.far {
+  opacity: 0.78;
+}
+.layout-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.layout-card-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+.layout-card-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  margin-top: 4px;
+}
+.layout-card-badge.buildable {
+  background: #2f8a3d;
+  color: #ffffff;
+}
+.layout-card-badge.close {
+  background: #b07d00;
+  color: #ffffff;
+}
+.layout-card-badge.far {
+  background: var(--ink-soft);
+  color: var(--bg-elev);
+}
+.layout-score {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  margin-top: 4px;
+}
+.layout-score-block {
+  width: 12px;
+  height: 16px;
+  background: transparent;
+  border: 1px solid var(--rule);
+}
+.layout-score-block.on {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.layout-sketch {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono",
+    "Liberation Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.15;
+  white-space: pre;
+  margin: 8px 0;
+  padding: 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+}
+.layout-card-desc {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+.layout-card-shortfall {
+  margin: 8px 0 4px;
+  font-weight: 700;
+}
+.layout-card-rationale {
+  margin: 4px 0;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.layout-card-footprint {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
 }

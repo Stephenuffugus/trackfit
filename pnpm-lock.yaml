@@ -13,6 +13,9 @@ importers:
       '@trackfit/cut-templates':
         specifier: workspace:*
         version: link:../../packages/cut-templates
+      '@trackfit/layouts':
+        specifier: workspace:*
+        version: link:../../packages/layouts
       '@trackfit/library':
         specifier: workspace:*
         version: link:../../packages/library

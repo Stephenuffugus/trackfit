@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@trackfit/cut-templates": "workspace:*",
+    "@trackfit/layouts": "workspace:*",
     "@trackfit/library": "workspace:*",
     "@trackfit/measure": "workspace:*",
     "@trackfit/solver": "workspace:*",

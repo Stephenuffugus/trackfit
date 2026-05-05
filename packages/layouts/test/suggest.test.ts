@@ -138,15 +138,17 @@ describe("suggestLayouts", () => {
     }
   });
 
-  it("returns at most 8 suggestions, all sorted with buildable templates first", () => {
-    // Sanity: the sort contract — buildable layouts must never be ranked
-    // below non-buildable ones, regardless of score.
+  it("sorts buildable templates first, regardless of score", () => {
+    // Sort contract — buildable layouts must never be ranked below
+    // non-buildable ones. The cap was raised to >= catalog size so that
+    // scale-pinned templates always make the cut for users who specified
+    // their scale; the UI is responsible for any visual top-N truncation.
     const inventory: SuggesterInventoryItem[] = [
       row(pieceById("lionel-fastrack", "10in-straight"), 8),
       row(pieceById("lionel-fastrack", "o36-curve"), 24),
     ];
     const out = suggestLayouts({ inventory });
-    expect(out.length).toBeLessThanOrEqual(8);
+    expect(out.length).toBeLessThanOrEqual(LAYOUT_TEMPLATES.length);
     let sawNonBuildable = false;
     for (const s of out) {
       if (!s.buildable) sawNonBuildable = true;
