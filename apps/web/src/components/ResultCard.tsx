@@ -4,8 +4,7 @@ import type {
   Solution,
 } from "@trackfit/solver";
 import { listSystems, type Scale, type TrackSystem } from "@trackfit/library";
-import { IN_TO_MM } from "../lib/constants";
-import { unitSuffix } from "../lib/format";
+import { formatLength, unitSuffix } from "../lib/format";
 import { inferSystemForRows } from "../lib/presets";
 import type { Unit } from "../lib/types";
 import { CutTemplateButton } from "./CutTemplateButton";
@@ -79,14 +78,10 @@ export function ResultCard({
     ? (solution as CurveSolution).score < 0.01
     : deviation_mm < 0.01;
 
-  const totalDisplay =
-    unit === "in"
-      ? parseFloat((total_mm / IN_TO_MM).toFixed(4))
-      : parseFloat(total_mm.toFixed(2));
-  const devDisplay =
-    unit === "in"
-      ? parseFloat((deviation_mm / IN_TO_MM).toFixed(4))
-      : parseFloat(deviation_mm.toFixed(2));
+  // Hobbyist precision — round to nearest 1/16" or 1 mm. See
+  // lib/format.ts for the rationale.
+  const totalDisplay = formatLength(total_mm, unit);
+  const devDisplay = formatLength(deviation_mm, unit);
 
   // Build flat segment list for the multi-color piece bar.
   // Curve solutions list every step individually (count: 1 per step + a
@@ -160,10 +155,7 @@ export function ResultCard({
   let suggestNode: React.ReactNode = null;
   if (kind === "under" && !isCurve) {
     const missing_mm = target_mm - total_mm;
-    const missingDisplay =
-      unit === "in"
-        ? parseFloat((missing_mm / IN_TO_MM).toFixed(3))
-        : parseFloat(missing_mm.toFixed(2));
+    const missingDisplay = formatLength(missing_mm, unit);
     suggestNode = (
       <div className="suggest">
         Add this combo plus a single{" "}
@@ -227,10 +219,11 @@ export function ResultCard({
       <div className="bar">
         {segments.map((s, i) => {
           const pct = (s.length_mm / barTotal) * 100;
-          const lenLabel =
-            unit === "in"
-              ? parseFloat((s.length_mm / IN_TO_MM).toFixed(2))
-              : Math.round(s.length_mm);
+          // Hobbyist-precision label per segment of the multi-color
+          // bar. Segments are short (one piece each) so the rounded
+          // display rarely reads "0" — but the underlying solver math
+          // is unrounded, only this string changes.
+          const lenLabel = formatLength(s.length_mm, unit);
           const isCurveSeg = s.kind === "curve";
           const glyph = isCurveSeg
             ? s.direction === -1
@@ -310,10 +303,7 @@ function CurveSuggestionBody({
 }: CurveSuggestionBodyProps) {
   if (suggestion.kind === "straight") {
     const u = unitSuffix(unit);
-    const display =
-      unit === "in"
-        ? parseFloat((suggestion.length_mm / IN_TO_MM).toFixed(3))
-        : parseFloat(suggestion.length_mm.toFixed(2));
+    const display = formatLength(suggestion.length_mm, unit);
     return (
       <>
         Add a straight piece of{" "}

@@ -1,13 +1,37 @@
 import { IN_TO_MM } from "./constants";
 import type { Unit } from "./types";
 
-/** Display a millimeter length in either unit, trimming trailing zeros. */
+/**
+ * Round-to-hobbyist-precision and display a millimetre length in either
+ * unit. Trailing zeros are trimmed.
+ *
+ * Hobbyists buy sectional track in clean fractions — 1/8" or 1/16"
+ * resolution covers every standard piece across every system in the
+ * library (1.375", 1.75", 4.5", 5", 9", etc.). Displaying "5.0207
+ * inches" makes Trackfit feel like CAD software for engineers, which
+ * is exactly the position the strategy doc tells us NOT to take.
+ *
+ * v0.3.6:
+ *  - inches → round to nearest 1/16" (0.0625"), show with up to 2
+ *    decimals after the round.
+ *  - mm     → round to nearest 1 mm, show as integer.
+ *
+ * Underlying solver math is unchanged — only the rendered string
+ * rounds. Fractional display ("5 1/16\"") is a polish task for
+ * later; decimal-with-clean-rounding gets us 95% of the win tonight.
+ */
 export function formatLength(mm: number, unit: Unit): string {
   if (unit === "in") {
-    const v = mm / IN_TO_MM;
-    return parseFloat(v.toFixed(4)).toString();
+    const inches = mm / IN_TO_MM;
+    // 16ths of an inch — covers 1/8 (0.125), 1/16 (0.0625), 3/8, 1/2,
+    // 3/4 standard fractions cleanly.
+    const rounded = Math.round(inches * 16) / 16;
+    return parseFloat(rounded.toFixed(2)).toString();
   }
-  return parseFloat(mm.toFixed(2)).toString();
+  // mm: round to the nearest whole mm. Sub-millimetre solver
+  // residuals are real but never sold as catalog SKUs, so display
+  // precision shouldn't pretend otherwise.
+  return Math.round(mm).toString();
 }
 
 export function unitSuffix(unit: Unit): string {
