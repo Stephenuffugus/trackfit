@@ -300,6 +300,40 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--ink-soft);
   border: 1px dashed var(--rule);
 }
+/* True-empty inventory state — first-run user, no pieces yet.
+ * Reuses the dashed-rule + ink-soft vocabulary from .inv-empty-filter
+ * so it visually says "this is an empty container" without introducing
+ * new aesthetic tokens. */
+.inv-empty-state {
+  padding: 18px 16px 14px;
+  border: 1px dashed var(--rule);
+  background: var(--bg-elev);
+}
+.inv-empty-state__lead {
+  margin: 0 0 8px;
+  font:
+    600 16px "Fraunces",
+    serif;
+  color: var(--ink);
+}
+.inv-empty-state__copy {
+  margin: 0 0 6px;
+  font: 500 13px "IBM Plex Sans", sans-serif;
+  color: var(--ink-soft);
+}
+.inv-empty-state__list {
+  margin: 0;
+  padding-left: 22px;
+  font: 500 13.5px "IBM Plex Sans", sans-serif;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.inv-empty-state__list li {
+  margin-bottom: 6px;
+}
+.inv-empty-state__list strong {
+  font-weight: 700;
+}
 .text-actions {
   display: flex;
   gap: 12px;

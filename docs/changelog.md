@@ -9,6 +9,99 @@ Newest entries on top.
 
 ---
 
+## v0.3.4 — 2026-05-05 (fourth pass, same day)
+
+### Round-2 focus-group fixes (M-effort)
+
+#### Qty stepper buttons (focus-group P1-T2-F2 + P5-T2-F1)
+
+Every inventory row now renders `[−][input][+]` with 44 × 44 px
+buttons (WCAG 2.5.5 / Apple HIG). The input itself stays editable
+for users who want to type a specific number. `−` clamps at 0 and
+shows a disabled state; `+` has no upper bound (some O-scale
+collectors own 200 of one piece). Desktop grid widened 64 → 140 px;
+mobile stack gives the qty row its own line.
+
+#### Per-row brand attribution (focus-group P2-T2-F3)
+
+Optional `system_id?: string` field on `InventoryRow`. Set by preset
+loads (`presetToInventory`) and picker adds (`pieceToInventoryRow`);
+omitted on hand-typed rows. A small brand chip renders beside the
+label when `system_id` is set; hand-typed rows show no chip and
+have no brand picker (we don't add a 5th decision).
+
+`inferSystemForRows` now prefers explicit `system_id` over label-
+match counting. The original heuristic stays as the fallback.
+ResultCard's marketplace expander picks per-piece brand, with a small
+"(N other brand pieces in this combo)" note when a solution mixes
+brands.
+
+#### localStorage quota safety net (focus-group P6-T5-F1)
+
+Detect-and-warn only this round (IndexedDB photo migration is
+round 3). New `lib/storage.ts`: `safeSetItem` wraps
+`localStorage.setItem` in a typed try-catch that classifies errors as
+`quota` / `blocked` / `unknown`. Three call sites updated:
+`usePersistedState` autosave, `prefs.savePrefs`, and
+`inventory-io.importInventory` (plus a pre-flight size warning on
+the import-confirm dialog).
+
+UI: `<StorageWarningToast>` subscribes to a window event. Plain-
+English copy: "Your phone is out of space for Trackfit. Try deleting
+some photos from your inventory, or export your inventory to back it
+up first." Per handoff §3, the warning is a safety net, not a stop
+sign.
+
+### `@trackfit/plan-import` package
+
+Foundation for strategy-doc §5 Phase 2 "Plan import" feature. New
+package parses AnyRail XML plan files into a typed
+`PlanRequirement[]`, then diffs against inventory to produce a
+`BuyListEntry[]`. 18 tests across 3 fixtures. Defensive parser per
+handoff §3 and strategy §3.5: malformed XML returns empty + warning
+(never throws), unknown library ids stamp `system_id: "unknown"` and
+warn rather than guessing.
+
+Hand-rolled regex parser (no XML dep) — the AnyRail shape is
+shallow enough that adding `@xmldom/xmldom` would be wire weight.
+Public surface stays stable if we swap to a real DOM parser later.
+
+Not yet wired into `apps/web` — UI integration is round 3.
+
+### Empty-state, tooltip, and what's-new polish
+
+- New true-empty inventory state ("Your box is empty. Two ways to
+  start: …") with explicit numbered guidance — the previous state
+  silently showed an empty list.
+- `<ScoreBar>` in the layout suggester gets a `title` tooltip
+  explaining what 5-of-5 vs fewer blocks means (focus-group Walt
+  + Bob).
+- `docs/whats-new-v0.3.4.md` — a calibrated-for-tester summary of
+  what's shipped this build, plus a pre-share checklist Stephen can
+  run before each tester session.
+
+### Solver test margin bumped
+
+The "wall-clock timeout default returns within N seconds" test was
+flaky under `pnpm -r test` parallel CPU contention on Codespaces.
+Bumped from 7 s → 10 s; still catches a real regression but absorbs
+shared-infra slack.
+
+### What didn't ship this milestone
+
+- **Photos to IndexedDB** — localStorage cap hits club-sized
+  inventories. Round 3 work; this build only detects + warns.
+- **JMRI export** — generate PanelPro-compatible XML from a solved
+  chain. Round 3.
+- **Voice input** — Web Speech API; older users would appreciate it.
+  Round 3.
+- **Plan-import UI** — package is ready; the "Drop a plan" surface
+  isn't. Round 3.
+- **Real Anthropic Vision API call** — still gated on Stephen's
+  $5 budget signoff and a deployed Supabase edge function.
+
+---
+
 ## v0.3.3 — 2026-05-05 (third pass, same day)
 
 ### Inventory comfort: piece-picker + accordion grouping

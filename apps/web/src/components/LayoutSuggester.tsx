@@ -189,12 +189,21 @@ function footprintBucket(tpl: LayoutTemplate): FootprintFilter {
 
 /**
  * Render the match score as a 5-block bar (no decimals — older audiences
- * read "4 of 5 blocks lit" faster than "0.8").
+ * read "4 of 5 blocks lit" faster than "0.8"). The native `title`
+ * tooltip explains what the bar means, since the focus-group personas
+ * (Walt, Bob) read the bar but didn't know what counted as a good match.
  */
 function ScoreBar({ score }: { score: number }) {
   const blocks = Math.round(Math.max(0, Math.min(1, score)) * 5);
+  const tooltip =
+    "Match score: 5 of 5 blocks means you have everything for this layout. " +
+    "Fewer blocks mean you're short some pieces — see the sentence below.";
   return (
-    <span className="layout-score" aria-label={`Match score ${blocks} of 5`}>
+    <span
+      className="layout-score"
+      aria-label={`Match score ${blocks} of 5`}
+      title={tooltip}
+    >
       {Array.from({ length: 5 }).map((_, i) => (
         <span
           key={i}

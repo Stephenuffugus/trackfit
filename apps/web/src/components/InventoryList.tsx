@@ -247,9 +247,34 @@ export function InventoryList({
           <div />
         </div>
         {visible.length === 0 ? (
-          <div className="inv-empty-filter">
-            No {filter === "all" ? "pieces" : filter + "s"} in your box yet.
-          </div>
+          rows.length === 0 ? (
+            // True empty state — first-run user has loaded no preset and
+            // added no pieces. Two paths forward, both highlighted.
+            // Older audiences need explicit not implicit guidance per
+            // handoff §1; "an empty box" silently is less useful than
+            // "here are the two ways to fill the box".
+            <div className="inv-empty-state">
+              <p className="inv-empty-state__lead">Your box is empty.</p>
+              <p className="inv-empty-state__copy">
+                Two ways to start:
+              </p>
+              <ol className="inv-empty-state__list">
+                <li>
+                  <strong>Pick a brand</strong> at the top of this section
+                  to load every piece that brand makes (then set how many
+                  of each you actually own).
+                </li>
+                <li>
+                  <strong>Tap "Add piece"</strong> below to pick from a
+                  catalog or type one in by hand.
+                </li>
+              </ol>
+            </div>
+          ) : (
+            <div className="inv-empty-filter">
+              No {filter === "all" ? "pieces" : filter + "s"} in your box yet.
+            </div>
+          )
         ) : (
           GROUP_ORDER.map(({ kind, label }) => {
             const items = groups[kind];
