@@ -447,6 +447,181 @@ describe("findCurveCombinations — v1 turnout pathing", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Wall-clock budget + feasibility pre-check — Trackfit Task #20
+//
+// The 2D recursion can run for minutes on a target the inventory genuinely
+// can't span (e.g. 127" gap, ~50" of straight track). Two complementary fixes:
+//   1. A microsecond-fast feasibility pre-check that bails when
+//      |target.length_mm| exceeds the maxPieceCount-bounded reach.
+//   2. A wall-clock budget (default 6 s) that aborts the recursion and
+//      surfaces whatever was found so far via `timed_out: true`.
+// ---------------------------------------------------------------------------
+describe("findCurveCombinations — timeout + feasibility", () => {
+  // 127 in ≈ 3225 mm — the gap that motivated this work.
+  const HARD_GAP_MM = 3225;
+
+  it("feasibility pre-check fires fast when inventory can't span the gap", () => {
+    // A few short Atlas Code 83 straights — total reach well under 3225 mm.
+    const inv: CurveInventoryItem[] = [
+      { label: '6" straight', kind: "straight", length_mm: 152.4, qty: 4 },
+      { label: '9" straight', kind: "straight", length_mm: 228.6, qty: 4 },
+    ];
+    const target: CurveTarget = {
+      length_mm: HARD_GAP_MM,
+      lateral_offset_mm: 0,
+      angle_degrees: 0,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 2,
+      lateral_offset_mm: 2,
+      angle_degrees: 1,
+    };
+
+    const t0 = performance.now();
+    const r = findCurveCombinations(inv, target, tol);
+    const elapsed = performance.now() - t0;
+
+    expect(elapsed).toBeLessThan(50);
+    expect(r.solutions).toEqual([]);
+    expect(r.bestNearMiss).toBeNull();
+    expect(r.suggestion).not.toBeNull();
+    expect(r.suggestion!.kind).toBe("mixed");
+    if (r.suggestion!.kind === "mixed") {
+      expect(r.suggestion!.message).toMatch(/longer .* than your inventory can span/);
+    }
+    expect(r.timed_out).toBe(false);
+  });
+
+  it("feasibility pre-check passes when inventory is large enough", () => {
+    // 30 × 9" straights = 6858 mm reachable — well over 3225 mm even with the
+    // default maxPieceCount=12 (12 × 228.6 ≈ 2743 mm... actually under). Use
+    // explicit maxPieceCount of 20 so 20 × 228.6 ≈ 4572 mm covers the target.
+    const inv: CurveInventoryItem[] = [
+      { label: '9" straight', kind: "straight", length_mm: 228.6, qty: 30 },
+    ];
+    const target: CurveTarget = {
+      length_mm: HARD_GAP_MM,
+      lateral_offset_mm: 0,
+      angle_degrees: 0,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 50, // wide tolerance — the 9" multiples won't land exactly
+      lateral_offset_mm: 2,
+      angle_degrees: 1,
+    };
+
+    const r = findCurveCombinations(inv, target, tol, { maxPieceCount: 20 });
+    // Pre-check should NOT fire — message (if any) must be the §5.3 straight
+    // suggestion shape, not the "longer than your inventory can span" one.
+    if (r.suggestion && r.suggestion.kind === "mixed") {
+      expect(r.suggestion.message).not.toMatch(/longer .* than your inventory can span/);
+    }
+    // The all-straight fast path should yield a result (within-tol or near-miss).
+    expect(r.bestNearMiss === null && r.solutions.length === 0).toBe(false);
+  });
+
+  it("wall-clock timeout fires on a hard curve case (maxElapsedMs: 500)", () => {
+    // Curved target + dense mixed inventory drives the 2D recursion deep.
+    const inv: CurveInventoryItem[] = [];
+    for (let i = 1; i <= 12; i++) {
+      inv.push({
+        label: `straight-${i}`,
+        kind: "straight",
+        length_mm: i * 25,
+        qty: 30,
+      });
+    }
+    for (const r of [195, 228, 318, 457, 558.8, 610, 762, 1067]) {
+      inv.push({
+        label: `r${r}-30deg`,
+        kind: "curve",
+        length_mm: (2 * Math.PI * r * 30) / 360,
+        radius_mm: r,
+        arc_degrees: 30,
+        qty: 30,
+      });
+    }
+    const target: CurveTarget = {
+      length_mm: HARD_GAP_MM,
+      lateral_offset_mm: 1612,
+      angle_degrees: 90,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 1,
+      lateral_offset_mm: 1,
+      angle_degrees: 0.1,
+    };
+
+    const t0 = performance.now();
+    const r = findCurveCombinations(inv, target, tol, { maxElapsedMs: 500 });
+    const elapsed = performance.now() - t0;
+
+    expect(r.timed_out).toBe(true);
+    // Allow a bit of slack over the 500-ms budget for the active recursion to
+    // unwind. If this trips it likely means the timeout check isn't firing
+    // inside the inner loop.
+    expect(elapsed).toBeLessThan(1500);
+    // We don't assert on solutions — the timeout may or may not catch one.
+  });
+
+  it("wall-clock timeout default (6 s) returns within 7 s on a hard curve case", () => {
+    const inv: CurveInventoryItem[] = [];
+    for (let i = 1; i <= 12; i++) {
+      inv.push({
+        label: `straight-${i}`,
+        kind: "straight",
+        length_mm: i * 25,
+        qty: 30,
+      });
+    }
+    for (const r of [195, 228, 318, 457, 558.8, 610, 762, 1067]) {
+      inv.push({
+        label: `r${r}-30deg`,
+        kind: "curve",
+        length_mm: (2 * Math.PI * r * 30) / 360,
+        radius_mm: r,
+        arc_degrees: 30,
+        qty: 30,
+      });
+    }
+    const target: CurveTarget = {
+      length_mm: HARD_GAP_MM,
+      lateral_offset_mm: 1612,
+      angle_degrees: 90,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 1,
+      lateral_offset_mm: 1,
+      angle_degrees: 0.1,
+    };
+
+    const t0 = performance.now();
+    const r = findCurveCombinations(inv, target, tol);
+    const elapsed = performance.now() - t0;
+
+    // 6 s budget + reasonable overhead for the recursion to unwind.
+    expect(elapsed).toBeLessThan(7000);
+    expect(typeof r.timed_out).toBe("boolean");
+  }, 10000);
+
+  it("timed_out defaults to false on a fast successful straight solve", () => {
+    const target: CurveTarget = {
+      length_mm: 381.0,
+      lateral_offset_mm: 0,
+      angle_degrees: 0,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 2,
+      lateral_offset_mm: 2,
+      angle_degrees: 1,
+    };
+    const r = findCurveCombinations(atlasHoStraights, target, tol);
+    expect(r.solutions.length).toBeGreaterThan(0);
+    expect(r.timed_out).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Performance — design §4.4
 // ---------------------------------------------------------------------------
 describe("findCurveCombinations — performance", () => {

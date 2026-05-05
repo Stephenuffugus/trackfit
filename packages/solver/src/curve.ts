@@ -108,6 +108,14 @@ export interface CurveSolverResult {
   bestNearMiss: CurveSolution | null;
   /** suggested missing piece(s) to close the gap exactly, when no exact fit */
   suggestion: CurveMissingPiece | null;
+  /**
+   * True when the search was cut short by `maxElapsedMs`. The returned
+   * `solutions` / `bestNearMiss` are whatever the recursion had accumulated
+   * when the budget elapsed — they may be empty / partial. Callers should
+   * surface this so the user can re-run with a different inventory or wider
+   * tolerance instead of staring at a "no fit" screen.
+   */
+  timed_out: boolean;
 }
 
 export interface CurveSolverOptions {
@@ -117,6 +125,14 @@ export interface CurveSolverOptions {
   maxAngleSumDegrees?: number;
   /** cap on number of pieces; 20 default per design §4.1 */
   maxPieceCount?: number;
+  /**
+   * Wall-clock budget in milliseconds. The search aborts and unwinds the
+   * recursion as soon as this is exceeded; whatever was found so far is
+   * returned with `timed_out: true`. Default 6000 ms — generous on a phone
+   * yet bounded enough that the UI can show a Cancel/timeout state instead
+   * of appearing hung. Tunable via options.maxElapsedMs.
+   */
+  maxElapsedMs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -366,7 +382,52 @@ function solveAllStraight(
   target: CurveTarget,
   tol: CurveTolerance,
   maxResults: number,
+  maxPieceCount: number,
+  maxElapsedMs: number,
 ): CurveSolverResult {
+  const startTime = performance.now();
+  // Defence-in-depth feasibility pre-check. The 1D solver `findCombinations`
+  // already enforces capacity bounds internally, but emitting a clear,
+  // user-facing message here saves the user from a generic "no fit" answer.
+  // Rank pieces by descending length so the maxPieceCount cap binds against
+  // the longest pieces first.
+  const reachable = (() => {
+    const valid = inv.filter((it) => {
+      if (it.qty <= 0) return false;
+      if (it.kind === "straight") return it.length_mm > 0;
+      if (it.kind === "turnout") return (it.overall_length_mm ?? 0) > 0;
+      return false;
+    });
+    const sortedByLen = [...valid].sort(
+      (a, b) => pathLength(b) - pathLength(a),
+    );
+    let maxReachableLength = 0;
+    let usedPieces = 0;
+    for (const p of sortedByLen) {
+      const take = Math.min(p.qty, maxPieceCount - usedPieces);
+      if (take <= 0) break;
+      maxReachableLength += pathLength(p) * take;
+      usedPieces += take;
+    }
+    return maxReachableLength;
+  })();
+
+  if (Math.abs(target.length_mm) > reachable + tol.length_mm) {
+    return {
+      solutions: [],
+      bestNearMiss: null,
+      suggestion: {
+        kind: "mixed",
+        message:
+          `This gap is longer (${(target.length_mm / IN_TO_MM).toFixed(1)} in) ` +
+          `than your inventory can span. With at most ${maxPieceCount} pieces ` +
+          `you can reach about ${(reachable / IN_TO_MM).toFixed(1)} in. ` +
+          `Add more long pieces, or break the gap into shorter segments.`,
+      },
+      timed_out: false,
+    };
+  }
+
   // Convert curve-inventory items to the 1D inventory shape. Carry through the
   // full original CurveInventoryItem so that `kind`, label, etc. survive into
   // the translated solutions.
@@ -458,6 +519,10 @@ function solveAllStraight(
     if (!bestNear || c.score < bestNear.score) bestNear = c;
   }
 
+  // 1D subset-sum is fast; a wall-clock check here is defence in depth so a
+  // pathological inventory (huge qty, dense fitter ladder) can't pin the UI.
+  const timedOut = performance.now() - startTime > maxElapsedMs;
+
   if (lateralOk && angleOk) {
     // Pure-1D problem: translate solutions and use the standard suggestion
     // builder, which (per §5.3) emits the v0.2 "add a straight piece" string
@@ -474,6 +539,7 @@ function solveAllStraight(
       solutions,
       bestNearMiss: bestNear,
       suggestion,
+      timed_out: timedOut,
     };
   }
 
@@ -487,6 +553,7 @@ function solveAllStraight(
       kind: "mixed",
       message: "Your gap requires a turn but you only have straight pieces.",
     },
+    timed_out: timedOut,
   };
 }
 
@@ -512,6 +579,12 @@ export function findCurveCombinations(
   // Callers that genuinely need deeper chains (helices, etc.) can still raise
   // this via options.maxPieceCount.
   const maxPieceCount = options.maxPieceCount ?? 12;
+  // Wall-clock budget. The 6 s default is generous on a phone but bounded so
+  // that pathological inputs (huge gap + dense inventory) can't leave the UI
+  // appearing hung. Tunable via options.maxElapsedMs — the worker will likely
+  // pass a tighter value once the user-facing Cancel control lands.
+  const maxElapsedMs = options.maxElapsedMs ?? 6000;
+  const startTime = performance.now();
 
   // -------------------------------------------------------------------------
   // All-straight fast path — design §4 (search) + §5.3 (straight-dominated
@@ -524,7 +597,14 @@ export function findCurveCombinations(
   // -------------------------------------------------------------------------
   const hasCurve = inv.some((it) => it.kind === "curve" && it.qty > 0);
   if (!hasCurve) {
-    return solveAllStraight(inv, target, tol, maxResults);
+    return solveAllStraight(
+      inv,
+      target,
+      tol,
+      maxResults,
+      maxPieceCount,
+      maxElapsedMs,
+    );
   }
 
   // Filter and sort by descending path length (design §4.3).
@@ -542,6 +622,40 @@ export function findCurveCombinations(
           (it.arc_degrees ?? 0) > 0) ||
         (it.kind === "turnout" && (it.overall_length_mm ?? 0) > 0)),
   );
+
+  // -------------------------------------------------------------------------
+  // Feasibility pre-check — bail fast (microseconds) when the inventory
+  // fundamentally can't span the requested longitudinal length. Without this,
+  // a 127-inch gap against a tiny inventory drives the recursive search for
+  // minutes before exhausting the prune bounds. We rank pieces by descending
+  // path length so the maxPieceCount cap binds against the longest pieces
+  // first — that gives the most-optimistic reachable distance.
+  // -------------------------------------------------------------------------
+  const sortedByLen = [...valid].sort((a, b) => pathLength(b) - pathLength(a));
+  let maxReachableLength = 0;
+  let usedPieces = 0;
+  for (const p of sortedByLen) {
+    const take = Math.min(p.qty, maxPieceCount - usedPieces);
+    if (take <= 0) break;
+    maxReachableLength += pathLength(p) * take;
+    usedPieces += take;
+  }
+  if (Math.abs(target.length_mm) > maxReachableLength + tol.length_mm) {
+    return {
+      solutions: [],
+      bestNearMiss: null,
+      suggestion: {
+        kind: "mixed",
+        message:
+          `This gap is longer (${(target.length_mm / IN_TO_MM).toFixed(1)} in) ` +
+          `than your inventory can span. With at most ${maxPieceCount} pieces ` +
+          `you can reach about ${(maxReachableLength / IN_TO_MM).toFixed(1)} in. ` +
+          `Add more long pieces, or break the gap into shorter segments.`,
+      },
+      timed_out: false,
+    };
+  }
+
   const sorted = [...valid].sort((a, b) => pathLength(b) - pathLength(a));
 
   const lengthBound = Math.abs(target.length_mm) * 1.5 + tol.length_mm;
@@ -574,6 +688,9 @@ export function findCurveCombinations(
   const stack: SearchStep[] = [];
   const solutions: CurveSolution[] = [];
   let bestNear: CurveSolution | null = null;
+  // Set when the wall-clock budget elapses; the recursion unwinds promptly
+  // and whatever was found before the deadline is what we surface.
+  let timedOut = false;
 
   function snapshot(pose: Pose, pathLen: number): CurveSolution {
     // Preserve placement order in the returned chain. Each step carries the
@@ -621,6 +738,15 @@ export function findCurveCombinations(
   }
 
   function recurse(pose: Pose, pathLen: number, angleSum: number): void {
+    // Wall-clock budget check (defence against pathological inputs). The cost
+    // of `performance.now()` is ~tens of nanoseconds, so we can afford to call
+    // it on every node entry. Once tripped, every pending frame returns and
+    // the search unwinds.
+    if (timedOut) return;
+    if (performance.now() - startTime > maxElapsedMs) {
+      timedOut = true;
+      return;
+    }
     if (stack.length > maxPieceCount) return;
 
     // ALWAYS evaluate the current node first (skip the empty initial stack —
@@ -727,5 +853,6 @@ export function findCurveCombinations(
     solutions: trimmed,
     bestNearMiss: bestNear,
     suggestion,
+    timed_out: timedOut,
   };
 }
