@@ -9,6 +9,127 @@ Newest entries on top.
 
 ---
 
+## v0.3.3 — 2026-05-05 (third pass, same day)
+
+### Inventory comfort: piece-picker + accordion grouping
+
+Stephen's call after using the app himself: "drop down pickers for
+pieces would probably make it so much more comfortable." Two
+coordinated changes that make the inventory list less overwhelming
+without removing any expressive power:
+
+- **Piece picker** — "+ Add piece" now opens a `<PiecePicker>` modal
+  with a searchable, kind-grouped catalog of every piece in the
+  active preset (or every system when none is loaded). Each entry
+  shows label, plain-English dimension ("9 in" / "22 in radius · 30°"
+  / "#4 turnout"), product code, and an "in inventory: N" chip when
+  already owned. Tapping adds (or bumps qty by 1 on a geometric-
+  identity dedupe — kind + length + radius + arc + frog), no typing
+  required. A "Type a custom piece →" footer preserves the legacy
+  empty-row escape per handoff §3.
+- **Accordion grouping** — inventory rows group by kind (Straights /
+  Curves / Turnouts / Crossings / Other) in `<details>`/`<summary>`
+  sections. Each header shows count + summary. Default expansion:
+  every group open when ≤ 8 rows; otherwise only the most-recently-
+  edited group stays open. User toggles are session-sticky.
+
+### Synthetic focus-group stress test
+
+A red-team review at `docs/focus-group-stress-test-2026-05.md`. Six
+older-hobbyist personas (Walt 71 / Margaret 68 / Dennis 64 / Frank
+58 / Bob 74 / Linda 52) walked through five tasks each (first-run,
+inventory entry, core task, Premium gate, exit moment) against the
+live source. 28 frictions logged, every one verified against actual
+code paths with file:line citations.
+
+Top finding: with both Stripe URLs intentionally unset, every
+persona who taps "Print inventory report" or hits the 4th-photo
+quota sees an upgrade modal with two disabled "Coming soon"
+buttons — reads as "the app can't do this." Largest single
+dampener in the build. Other top frictions ranked, with concrete
+diff suggestions.
+
+### Round-1 focus-group fixes (S-effort top 7)
+
+- **Premium "Coming soon" rewrite.** When no payment URLs are set,
+  the modal shows a calm "we're still figuring out a fair price"
+  body and a single "Got it" button instead of two disabled cards.
+- **DEFAULT_PRESET_QTY 4 → 0.** Real users own 0 of most catalog
+  SKUs; the old default forced ~30 rows of qty edits on every preset
+  load. Picker-added pieces still default to qty 1 via the picker's
+  own defensive fallback.
+- **Footprint chips and per-card footprint respect persisted unit.**
+  Imperial users see "Small (≤ 5 ft × 3 ft)" and "Footprint about
+  4 ft × 8 ft"; metric users still get mm. (Walt's 4×8 ft mental
+  math is gone.)
+- **Centimetre input.** Target / tolerance fields accept "47cm",
+  "47 cm", "470mm", "18in", or `18"` suffixes. Suffix overrides
+  the unit toggle for that field. New `parseLengthExpression`
+  centralises the parse. Inputs are now `type="text"
+  inputMode="decimal"` so the suffix isn't stripped before parse.
+- **Auto-fill won't silently clobber typed labels.** When the row
+  has a non-empty label that differs from the top candidate's,
+  route through the candidate-confirm sheet regardless of confidence.
+- **Scale auto-detect uses library system first.** The
+  `TrackSystem.scale` is authoritative when a preset is identifiable
+  from labels; median-radius heuristic is the fallback only.
+- **Stub confidences are FIXED.** No more 17% chance of "same
+  gesture, different outcome" because of jittered top-1 around the
+  0.85 auto-fill threshold. Real Vision API will have content-
+  driven variance; the stub shouldn't fake it.
+
+Plus: first-photo quota toast ("3 of 3 free photo-IDs left") so the
+quota gate at attempt 4 doesn't surprise.
+
+### Discord feedback button
+
+New "Give feedback on Discord" row in Settings, gated on
+`VITE_DISCORD_FEEDBACK_URL`. Empty value → row doesn't render.
+Stephen fills in the invite URL when his server is ready. Plus
+`.env.example` expanded to document Discord, Tally (deprecated
+pricing survey), and real-photo-ID env vars alongside the existing
+Premium ones.
+
+### Solver guardrails
+
+Reported by Stephen during dev: a 127-inch curved gap solve hung
+for "a few minutes with no result." Two complementary defences in
+`packages/solver/src/curve.ts`:
+
+- **Feasibility pre-check** — sum the maxPieceCount longest pieces
+  vs. target length. Microsecond-fast bail-out with a typed "your
+  inventory can't span this gap (X in vs Y in reachable)"
+  suggestion when fundamentally unreachable.
+- **Wall-clock timeout** — `maxElapsedMs` option (default 6000;
+  the UI passes 8000). Each `recurse()` entry checks elapsed time
+  and unwinds when the budget is hit. Returns whatever bestNearMiss
+  was found with a new `timed_out: true` flag.
+
+UI side: elapsed-time counter ("Solving… 3s") under the Solve
+button while a search is running, **Cancel button** that surfaces
+after 2 s and terminates+respawns the worker, "Search ran out of
+time · best guess so far" banner when timed_out fires, and a
+direct rendering of the feasibility-pre-check message ("This gap
+is longer than your inventory can span") instead of the generic
+empty state.
+
+### What didn't ship this milestone
+
+- **#3 Qty stepper buttons** (M effort, focus-group P1-T2-F2,
+  P5-T2-F1). Every persona over 65 will appreciate explicit `−` /
+  `+` buttons next to the qty input. Deferred to round 2.
+- **#9 Mixed-brand attribution** (M effort, focus-group P2-T2-F3).
+  Margaret's hand-typed Bachmann pieces silently inherit Atlas
+  vendor links. Deferred to round 2.
+- **#10 localStorage quota silent failure** (M-L, focus-group
+  P6-T5-F1). Linda's club-sized inventory at 50+ photos can exceed
+  the 5 MB cap. Needs IndexedDB migration for photos. Deferred.
+- **i18n / localisation** — flagged as permission-gated (handoff §9).
+- **Visual palette / pricing decisions** — permission-gated, no fix
+  proposed.
+
+---
+
 ## v0.3.2 — 2026-05-05 (later same day)
 
 ### Pre-launch validation stack
