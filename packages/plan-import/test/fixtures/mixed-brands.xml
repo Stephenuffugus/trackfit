@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<anyrail-plan version="6.5" name="Garage Layout &amp; Branch">
+  <library-set>
+    <library id="atlas-ho-code-83" />
+    <library id="bachmann-ez-track-ho" />
+    <library id="some-future-system-not-in-trackfit" />
+  </library-set>
+  <pieces>
+    <!-- Atlas HO Code 83: 521 = 9" straight, 526 = 6" straight -->
+    <piece library-id="atlas-ho-code-83" piece-code="521" />
+    <piece library-id="atlas-ho-code-83" piece-code="521" />
+    <piece library-id="atlas-ho-code-83" piece-code="526" />
+    <!-- Bachmann EZ-Track HO: 44581 = 9" straight (nickel silver) -->
+    <piece library-id="bachmann-ez-track-ho" piece-code="44581" />
+    <piece library-id="bachmann-ez-track-ho" piece-code="44581" />
+    <piece library-id="bachmann-ez-track-ho" piece-code="44581" />
+    <!-- Unknown library — should land in warnings, system_id="unknown" -->
+    <piece library-id="some-future-system-not-in-trackfit" piece-code="X-99" />
+    <!-- Stray foreign element the parser must ignore -->
+    <annotation kind="note">Caboose siding TBD</annotation>
+    <!-- Missing piece-code, should be counted into the dropped warning -->
+    <piece library-id="atlas-ho-code-83" />
+  </pieces>
+</anyrail-plan>
