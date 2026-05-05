@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { IN_TO_MM } from "../lib/constants";
+import { addOrBump } from "../lib/piece-picker";
 import type { InventoryRow, Unit } from "../lib/types";
 
 const MAX_UNDO_STACK = 10;
@@ -60,12 +61,43 @@ export function useUndoableInventory(
 
   /* ------- non-destructive (no undo snapshot) ------- */
 
-  const add = useCallback(() => {
-    setInventory((prev) => [
-      ...prev,
-      { label: "New piece", length_mm: 0, qty: 1, photo: null },
-    ]);
-  }, [setInventory]);
+  /**
+   * Append a new inventory row.
+   *
+   *   - With no argument (the legacy "+ Add row" / "Type a custom piece"
+   *     path), pushes an empty row the user is expected to type into.
+   *   - With a row argument (the PiecePicker path), runs the
+   *     dedupe-and-bump rule from spec: if the same piece type is
+   *     already in inventory, bump its qty by 1; otherwise append.
+   *     `addedIndex` is returned so the caller can scroll to the new
+   *     or bumped row.
+   *
+   * Returns the affected index in the next inventory, or null if no
+   * change happened (currently never — both branches always change
+   * something — but documented for forward-compat).
+   */
+  const add = useCallback(
+    (incoming?: InventoryRow): number | null => {
+      // Compute against the latest snapshot of inventory available in
+      // the hook's closure. `inventory` is the React state we read in
+      // this render; that's the correct base since add() is always
+      // called in response to a user action that fired *after* the
+      // most recent commit. We then apply the same operation inside
+      // setInventory's updater for safety against concurrent updates.
+      if (!incoming) {
+        const affectedIndex = inventory.length;
+        setInventory((prev) => [
+          ...prev,
+          { label: "New piece", length_mm: 0, qty: 1, photo: null },
+        ]);
+        return affectedIndex;
+      }
+      const preview = addOrBump(inventory, incoming);
+      setInventory((prev) => addOrBump(prev, incoming).next);
+      return preview.affectedIndex;
+    },
+    [inventory, setInventory],
+  );
 
   const updateField = useCallback(
     (idx: number, field: "label" | "length" | "qty", value: string) => {

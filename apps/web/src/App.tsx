@@ -789,6 +789,12 @@ export default function App() {
         <InventoryList
           rows={inventory}
           unit={unit}
+          activeSystem={
+            activePresetId
+              ? listSystems().find((s) => s.id === activePresetId) ?? null
+              : null
+          }
+          allSystems={listSystems()}
           onPhotoClick={handleRowPhotoClick}
           onChange={updateField}
           onDelete={remove}
