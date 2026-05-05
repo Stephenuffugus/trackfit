@@ -9,6 +9,111 @@ Newest entries on top.
 
 ---
 
+## v0.3.2 — 2026-05-05 (later same day)
+
+### Pre-launch validation stack
+
+Three coordinated scaffolds that let us learn whether photo-ID and
+other paid features will sell — without spending real Claude vision
+API money yet. Stephen has a hard rule: no more than $5 spent on
+paid-API features until validated as sellable.
+
+**Layer 1 — photo-ID UX scaffold (zero spend).** Every photo capture
+runs through `lib/identify-piece.ts`, a typed `identifyPiece(base64)`
+that returns three plausible candidates after a 600ms fake delay.
+Pulls real pieces from the active preset when one's loaded; HO Atlas
+Code 83 defaults otherwise. Top-1 confidence ≥ 0.85 auto-fills the
+row; below that, a `<CandidateConfirmSheet>` opens with the three
+candidates and a "None of these — type it manually" escape hatch
+(per handoff §3, the manual-entry path is never blocked). Real-fetch
+path is gated behind `VITE_USE_REAL_PHOTO_ID` and falls back to the
+stub on any error.
+
+**Layer 4 — Premium CTA stub.** A "Trackfit Premium" row in Settings
+opens a modal with Lifetime / Monthly / "No thanks" cards. Outbound
+links read from `VITE_PREMIUM_LIFETIME_URL` / `VITE_PREMIUM_MONTHLY_URL`
+env vars. When unset, the cards render disabled with "Coming soon" —
+that's the deliberate state today (Stephen hasn't decided pricing).
+Whole feature is gated by `VITE_PREMIUM_ENABLED` so the row doesn't
+even render if we're not actively testing it.
+
+### Freemium gate system
+
+Stephen's call: rather than a survey-style pricing test, ship as a
+real freemium product. The upgrade click on a Stripe link becomes the
+validation signal. All gates are wired today; Stripe URLs stay empty
+until pricing is decided.
+
+**Free forever, must stay legitimately useful** (Stephen's explicit
+constraint): the gap solver and its near-miss SUGGESTED callout
+(unlimited), all 16 verified track libraries, manual inventory with
+no piece cap, the layout suggester, reference-object gap measurement,
+manual photo capture as visual mnemonic, the 1:1 cut-template PDFs
+for flex track, JSON export/import, comfort prefs (bigger text, high
+contrast), and the top-2 vendors in marketplace expanders. **The
+killer feature is free.** Locking the gap solver would kill the
+strategy doc's "Shazam of model railroad track" thesis — it's the
+hook that brings people in.
+
+**Premium:** photo-ID auto-fill (with **3 free lifetime trials** so
+the user tastes the magic before the gate), the insurance-grade
+inventory PDF report, and the full 8-vendor marketplace list. Cloud
+sync, plan import, and the LLM design assistant are roadmap items —
+not in this milestone.
+
+**License model:** `TFP-XXXX-XXXX-XXXX` codes (4+4+4 uppercase
+alphanumeric, no confusing 0/O/1/I/L). Stephen issues codes manually
+after Stripe Checkout completes — at <50 customers, manual is the
+right call. He runs `node scripts/gen-license-code.mjs` to generate
+`(code, hash)` pairs, emails the code to the buyer, pastes the hash
+into the embedded `VALID_LICENSE_HASHES` allowlist in
+`apps/web/src/lib/premium.ts`, and redeploys. Hash-only protection
+means inspecting the bundled JS reveals only hashes, not codes; a
+casual reader can't generate codes for free.
+
+Persisted in localStorage (`trackfit.premium.v1`). v1 is reusable
+across devices on purpose — honest users own multiple devices, and
+dishonest users will share regardless. We're not in the DRM business.
+
+**Gate behaviour for non-premium users:**
+- 4th photo with auto-identify on → upgrade modal opens via the
+  `trackfit:open-upgrade` window event. The photo still attaches to
+  the row; only the auto-fill is blocked.
+- "Print inventory report" → upgrade modal (the row stays visible
+  for discoverability).
+- Marketplace expander → top 2 vendors visible, then a `<PremiumGate>`
+  strip with "Premium unlocks N more vendors → Upgrade".
+
+**Removed in this milestone:** the auto-firing `<PremiumPricingTest>`
+modal (Layer 2 of the original four-layer plan). The upgrade click is
+a stronger signal than survey-style "would you pay $X?" answers, and
+showing two prompts in a row felt cluttered. The component file stays
+on disk for possible re-use; just nothing renders or triggers it.
+
+### Tester card refresh
+
+`docs/tester-card.md` updated to reflect the freemium reality.
+Includes a tester-friendly explanation that hitting the upgrade
+screen during the test is **expected and fine** — no charges happen,
+we're testing whether the flow makes sense. Question 5 explicitly
+asks for fair-price intuition (once-only / yearly / monthly / never).
+Stephen fills in the contact line and removes the placeholder before
+printing.
+
+### What didn't ship this milestone
+
+- **Real Claude vision API call.** Photo-ID is still stubbed.
+  `VITE_USE_REAL_PHOTO_ID=true` flips the stub for a real fetch to
+  `/api/identify-piece` (the existing `supabase/functions/identify-
+  piece/index.ts` edge function), but the function isn't deployed
+  and shouldn't be until a paying customer or a clear validation
+  signal lands.
+- **Stripe checkout / webhook integration.** Manual code issuance
+  is correct at <50 customers. Auto-issuance is a Phase 4 problem.
+- **Cloud sync.** Schema migrations exist; client wiring doesn't.
+
+---
+
 ## v0.3.1 — 2026-05-05
 
 ### Layout suggester: chips, plain English, marketplace

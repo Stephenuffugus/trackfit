@@ -53,7 +53,11 @@ of three guesses is right.
 > **Note:** The photo identification is currently running on test data,
 > not your real photo. We're checking whether the *experience* feels
 > right before turning on the real AI — that part costs money and we
-> want to know it's worth paying for first.
+> want to know it's worth paying for first. After three photo
+> identifications, the app will show a "Trackfit Premium" upgrade
+> screen. **Don't worry about it** — it's there so we can test whether
+> the upgrade flow makes sense, but no one will be charged anything
+> right now. Just close the screen and keep going.
 
 ### 4. Try the gap solver — the main attraction
 
@@ -78,11 +82,33 @@ Try the chips at the top to filter by **Style**, **Footprint**, and
 
 ### 6. Settings (optional)
 
-The gear icon in the header opens a small menu. Two things in there
+The gear icon in the header opens a small menu. Three things in there
 worth trying:
 - **Bigger text** — turns up the font size by 25%.
 - **Print inventory report** — generates a PDF binder of every piece
   you own, with photos. Useful for insurance or just for the shelf.
+  *(This is a paid feature, so tapping it shows the upgrade screen.
+  No charge, just curious what you think of it.)*
+- **Show intro again** — replays the welcome cards if you want a
+  refresher.
+
+---
+
+## A note on free vs. paid
+
+Most of Trackfit is **free forever** — the gap solver, the track
+libraries, the inventory list, the layout suggester, the cut templates,
+photos as visual mnemonic. We mean it. Those are the things that
+should help you on the basement floor with a pile of track.
+
+A handful of features are planned as **Trackfit Premium** — photo-ID
+auto-fill (after the three free trials), the printable insurance-grade
+inventory binder, and the full eight-vendor "where to buy" list. Free
+users see the top two vendors, which is plenty for most needs.
+
+We haven't decided on a price yet. **One of the most useful things you
+can tell us is what *you* would consider fair.** No pressure. There's
+nothing to buy today.
 
 ---
 
@@ -96,9 +122,13 @@ Don't write us a review. Just answer these in whatever form is easiest
 3. **Was the photo step exciting, ordinary, or unnecessary?**
 4. **The gap solver: did it tell you something you didn't already
    know?**
-5. **If Trackfit cost money, what's a fair price?** (Once-only? Yearly?
-   Monthly? "I'd never pay for this" is also a real answer.)
-6. **Who else in your hobby world would want this?**
+5. **If Trackfit Premium cost money, what's a fair price?** Once-only
+   (e.g. $20? $30? $50?), yearly, monthly? "I'd never pay for this" is
+   a real answer too — it tells us we got the free tier wrong.
+6. **Did the line between free and paid features feel right?** Was
+   anything in the paid tier that you'd expect to be free, or vice
+   versa?
+7. **Who else in your hobby world would want this?**
 
 ---
 
