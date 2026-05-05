@@ -138,6 +138,28 @@ describe("suggestLayouts", () => {
     }
   });
 
+  it("ships every template with valid style/complexity/appeal metadata", () => {
+    // The suggester UI filters and sorts on these fields. A missing or empty
+    // value would break the chip filter or render an italic-blank pitch line,
+    // so validate the catalog at the boundary.
+    const validStyles = new Set([
+      "continuous-loop",
+      "switching",
+      "showcase",
+      "starter",
+    ]);
+    expect(LAYOUT_TEMPLATES.length).toBeGreaterThan(0);
+    for (const tpl of LAYOUT_TEMPLATES) {
+      expect(tpl.style, `style on ${tpl.id}`).toBeDefined();
+      expect(validStyles.has(tpl.style), `valid style on ${tpl.id}`).toBe(true);
+      expect(typeof tpl.complexity, `complexity on ${tpl.id}`).toBe("number");
+      expect(tpl.complexity, `complexity on ${tpl.id}`).toBeGreaterThanOrEqual(1);
+      expect(tpl.complexity, `complexity on ${tpl.id}`).toBeLessThanOrEqual(5);
+      expect(typeof tpl.appeal, `appeal on ${tpl.id}`).toBe("string");
+      expect(tpl.appeal.trim().length, `appeal on ${tpl.id}`).toBeGreaterThan(0);
+    }
+  });
+
   it("sorts buildable templates first, regardless of score", () => {
     // Sort contract — buildable layouts must never be ranked below
     // non-buildable ones. The cap was raised to >= catalog size so that

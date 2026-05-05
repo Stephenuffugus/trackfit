@@ -30,6 +30,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "  |                     |",
       "   \\___________________/",
     ].join("\n"),
+    style: "continuous-loop",
+    complexity: 1,
+    appeal: "The hands-down easiest layout to build and run.",
   },
 
   {
@@ -49,6 +52,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       " |                       |",
       "  \\_____/         \\_____/",
     ].join("\n"),
+    style: "continuous-loop",
+    complexity: 2,
+    appeal: "A long shelf-friendly run that turns the train around at each end.",
   },
 
   {
@@ -69,6 +75,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "  | \\_____________/ |",
       "   \\_______________/",
     ].join("\n"),
+    style: "continuous-loop",
+    complexity: 3,
+    appeal: "Dogbone running length packed into a narrower footprint.",
   },
 
   {
@@ -90,6 +99,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "  |     \\_____X_____/   |",
       "   \\___________________/",
     ].join("\n"),
+    style: "showcase",
+    complexity: 3,
+    appeal: "More visual interest in the same footprint.",
   },
 
   {
@@ -111,6 +123,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "  |                     |",
       "   \\__Y________________/",
     ].join("\n"),
+    style: "continuous-loop",
+    complexity: 3,
+    appeal: "A plain oval that lets you stash a second train without unhooking.",
   },
 
   {
@@ -130,6 +145,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "             |            |",
       "             ==============",
     ].join("\n"),
+    style: "switching",
+    complexity: 4,
+    appeal: "Real operations: meet, pass, and reverse — not just laps.",
   },
 
   {
@@ -150,6 +168,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "  =========Y           |",
       "            \\_________/",
     ].join("\n"),
+    style: "showcase",
+    complexity: 4,
+    appeal: "Watch the train turn itself around — the visual trick of model railroading.",
   },
 
   {
@@ -171,6 +192,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "           \\=Y========================",
       "              \\======================",
     ].join("\n"),
+    style: "switching",
+    complexity: 5,
+    appeal: "A switcher's playground — every turnout you own gets a job.",
   },
 
   {
@@ -192,6 +216,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "     |      /|\\      |",
       "      \\_____|_______/",
     ].join("\n"),
+    style: "starter",
+    complexity: 1,
+    appeal: "A holiday classic — set it up in an afternoon, leave it for the season.",
   },
 
   {
@@ -213,6 +240,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "    |    /|\\      |",
       "     \\___|_______/",
     ].join("\n"),
+    style: "starter",
+    complexity: 1,
+    appeal: "Tucks around the tree skirt and runs all month.",
   },
 
   {
@@ -235,5 +265,8 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       "      |         |               \\",
       "      |_________|_______________/",
     ].join("\n"),
+    style: "switching",
+    complexity: 4,
+    appeal: "Industrial switching puzzles — no loop, just operations.",
   },
 ];

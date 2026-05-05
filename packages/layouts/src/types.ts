@@ -61,6 +61,22 @@ export interface LayoutTemplate {
   footprint: { width_mm: number; depth_mm: number };
   /** ASCII sketch — 8 lines max — for the result card */
   ascii_sketch: string;
+  /**
+   * Loose category for the filter UI. Hobbyists pick a chip
+   * ("Continuous loop", "Switching", "Showcase", "Beginner") that maps
+   * onto these values; templates pin one each.
+   */
+  style: "continuous-loop" | "switching" | "showcase" | "starter";
+  /**
+   * Rough complexity, 1-5 (5 = ambitious). Helps a beginner avoid the
+   * yard ladder; helps an experienced user sort to it.
+   */
+  complexity: 1 | 2 | 3 | 4 | 5;
+  /**
+   * One-sentence pitch for *why* a hobbyist would build this layout.
+   * Shown italic above the description in the result card.
+   */
+  appeal: string;
 }
 
 /**
