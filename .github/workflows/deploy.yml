@@ -58,7 +58,12 @@ jobs:
 
       - name: Build web app
         env:
-          VITE_BASE_PATH: /trackfit/
+          # Custom domain (trackfit.stevieweedseed.com) serves at the root, so
+          # asset paths must NOT be prefixed with /trackfit/. The CNAME file
+          # at apps/web/public/CNAME tells GitHub Pages to expect the custom
+          # domain. Until DNS propagates, the github.io/trackfit/ URL will
+          # 404 on its assets — that's acceptable; it's a temporary state.
+          VITE_BASE_PATH: /
         run: pnpm --filter @trackfit/web run build
 
       - name: Configure Pages
