@@ -1,4 +1,5 @@
-import type { SolutionPiece } from "./types.js";
+import { findCombinations } from "./subset-sum.js";
+import type { InventoryItem, Solution, SolutionPiece } from "./types.js";
 
 /**
  * Curve-aware (2D + heading) gap solver.
@@ -312,6 +313,120 @@ interface SearchStep {
   direction: 1 | -1;
 }
 
+// ---------------------------------------------------------------------------
+// All-straight fast path (design §4 — search; §5.3 — straight suggestion).
+//
+// When the inventory has no curves, the chain can only advance along the
+// entry tangent — y stays 0 and heading stays 0. So:
+//   * If target.lateral_offset_mm == 0 and target.angle_degrees == 0, the
+//     problem reduces exactly to v0.2's bounded subset-sum on length_mm.
+//     We translate `findCombinations` results into `CurveSolution`s.
+//   * Otherwise no exact fit can exist (straights can't change y or h).
+//     We still run the 1D solver on length to surface a length-only
+//     bestNearMiss and a §5.5 "mixed" suggestion explaining the situation.
+// ---------------------------------------------------------------------------
+function solveAllStraight(
+  inv: CurveInventoryItem[],
+  target: CurveTarget,
+  tol: CurveTolerance,
+  maxResults: number,
+): CurveSolverResult {
+  // Convert curve-inventory items to the 1D inventory shape. Carry through the
+  // full original CurveInventoryItem so that `kind`, label, etc. survive into
+  // the translated solutions.
+  const items1d: InventoryItem[] = inv
+    .filter((it) => it.kind === "straight" && it.length_mm > 0 && it.qty > 0)
+    .map((it) => ({
+      ...it,
+      label: it.label,
+      length_mm: it.length_mm,
+      qty: it.qty,
+    }));
+
+  const lateralOk = Math.abs(target.lateral_offset_mm) <= tol.lateral_offset_mm + 1e-9;
+  const angleOk = Math.abs(target.angle_degrees) <= tol.angle_degrees + 1e-9;
+
+  // Translate a 1D Solution into a CurveSolution. Each `count` becomes that
+  // many sequential identical steps (direction = +1 since straights only).
+  const toCurveSolution = (sol: Solution): CurveSolution => {
+    const pieces: CurveSolutionStep[] = [];
+    for (const p of sol.pieces) {
+      // Find the matching original CurveInventoryItem so we preserve any
+      // extra metadata; fall back to the 1D shape if not found.
+      const orig =
+        inv.find((it) => it.label === p.label && it.length_mm === p.length_mm) ??
+        (p as unknown as CurveInventoryItem);
+      for (let k = 0; k < p.count; k++) {
+        pieces.push({
+          ...orig,
+          count: 1,
+          direction: 1,
+        });
+      }
+    }
+    const r_long = sol.total_mm - target.length_mm;
+    const r_lat = -target.lateral_offset_mm;
+    const r_angle = wrapDegrees(-target.angle_degrees);
+    const score = scoreOf({ r_long, r_lat, r_angle }, tol);
+    return {
+      pieces,
+      endpoint: { x_mm: sol.total_mm, y_mm: 0, heading_degrees: 0 },
+      residual: {
+        length_mm: r_long,
+        lateral_offset_mm: r_lat,
+        angle_degrees: r_angle,
+      },
+      score,
+      pieceCount: pieces.length,
+      total_arc_length_mm: sol.total_mm,
+    };
+  };
+
+  // Run the 1D solver with the longitudinal target and tolerance.
+  const r1d = findCombinations(items1d, target.length_mm, tol.length_mm, maxResults);
+
+  // Pick the best near-miss the 1D solver surfaced. Use score (not raw
+  // deviation) so the curve-aware contract is preserved if both sides exist.
+  let bestNear: CurveSolution | null = null;
+  const candidates: CurveSolution[] = [];
+  if (r1d.bestUnder) candidates.push(toCurveSolution(r1d.bestUnder));
+  if (r1d.bestOver) candidates.push(toCurveSolution(r1d.bestOver));
+  for (const c of candidates) {
+    if (!bestNear || c.score < bestNear.score) bestNear = c;
+  }
+
+  if (lateralOk && angleOk) {
+    // Pure-1D problem: translate solutions and use the standard suggestion
+    // builder, which (per §5.3) emits the v0.2 "add a straight piece" string
+    // when the residual is length-only.
+    const solutions = r1d.solutions.map(toCurveSolution);
+    // If we have a within-tolerance solution, prefer it as the "best" near.
+    if (solutions.length > 0) {
+      const top = solutions[0]!;
+      if (!bestNear || top.score < bestNear.score) bestNear = top;
+    }
+    const suggestion =
+      solutions.length === 0 ? buildSuggestion(bestNear, tol) : null;
+    return {
+      solutions,
+      bestNearMiss: bestNear,
+      suggestion,
+    };
+  }
+
+  // Lateral and/or angular target is non-zero — no straights-only chain can
+  // ever satisfy it. Surface a length-only near-miss and a §5.5-style mixed
+  // suggestion explaining the situation.
+  return {
+    solutions: [],
+    bestNearMiss: bestNear,
+    suggestion: {
+      kind: "mixed",
+      message: "Your gap requires a turn but you only have straight pieces.",
+    },
+  };
+}
+
 /**
  * Branch-and-bound search for ordered piece chains that hit the 3-axis target.
  *
@@ -328,7 +443,26 @@ export function findCurveCombinations(
 ): CurveSolverResult {
   const maxResults = options.maxResults ?? 20;
   const maxAngleSum = options.maxAngleSumDegrees ?? 720;
-  const maxPieceCount = options.maxPieceCount ?? 20;
+  // Design §4.4 — explicit guidance is "cap piece count at 12 (most fills ≤ 8)".
+  // The previous default of 20 makes the recursive search blow up on dense
+  // inventories (20 types × 30 qty) before the reachability prunes can fire.
+  // Callers that genuinely need deeper chains (helices, etc.) can still raise
+  // this via options.maxPieceCount.
+  const maxPieceCount = options.maxPieceCount ?? 12;
+
+  // -------------------------------------------------------------------------
+  // All-straight fast path — design §4 (search) + §5.3 (straight-dominated
+  // suggestion). When the inventory contains zero curves, the 2D problem
+  // collapses to v0.2's 1D subset-sum: lateral and angular axes can't move,
+  // so they must already be zero or no exact fit exists. Either way, delegate
+  // to the proven (≈1ms) `findCombinations` solver instead of running the
+  // recursive 2D search. This collapses the v0.2 atlas regression from ~70s
+  // to single-digit milliseconds.
+  // -------------------------------------------------------------------------
+  const hasCurve = inv.some((it) => it.kind === "curve" && it.qty > 0);
+  if (!hasCurve) {
+    return solveAllStraight(inv, target, tol, maxResults);
+  }
 
   // Filter and sort by descending path length (design §4.3).
   const valid = inv.filter(
@@ -436,19 +570,31 @@ export function findCurveCombinations(
     if (pathLen > totalReach + tol.length_mm) return;
     if (angleSum > maxAngleSum) return;
 
-    if (stack.length > 0) {
-      // Reachability prune (design §4.2). All bounds are conservative — the
-      // chord of any piece is at most its path length; lateral shift per piece
-      // is at most max(pathLen, 2·radius) ≤ pathLen + 2·radius.
-      const longGap = target.length_mm - pose.x_mm;
-      if (Math.abs(longGap) > remLen + tol.length_mm) return;
+    // -----------------------------------------------------------------------
+    // Reachability prunes (design §4.2). These all check: can the *remaining*
+    // inventory possibly close the residual on a given axis? If not, prune the
+    // entire subtree. Bounds are conservative — the chord of any piece is at
+    // most its path length; lateral shift per piece is at most 2·radius for
+    // curves (straights contribute 0). These prunes fire even at the root so
+    // that an obviously-undercapacity inventory short-circuits immediately.
+    // -----------------------------------------------------------------------
 
-      const angGap = wrapDegrees(target.angle_degrees - pose.heading_degrees);
-      if (Math.abs(angGap) > remArc + tol.angle_degrees) return;
+    // §4.2 — longitudinal reachability: |target_length − current_length|
+    // must be coverable by the sum of remaining piece path lengths (plus tol).
+    const longGap = target.length_mm - pose.x_mm;
+    if (Math.abs(longGap) > remLen + tol.length_mm) return;
 
-      const latGap = target.lateral_offset_mm - pose.y_mm;
-      if (Math.abs(latGap) > remLat + remLen + tol.lateral_offset_mm) return;
-    }
+    // §4.2 — angular reachability: |target_angle − current_angle| must be
+    // coverable by the sum of remaining curve arc_degrees (plus tol).
+    // Straights contribute 0 to remArc so the bound stays tight.
+    const angGap = wrapDegrees(target.angle_degrees - pose.heading_degrees);
+    if (Math.abs(angGap) > remArc + tol.angle_degrees) return;
+
+    // §4.2 — lateral reachability: bounded by Σ 2·r_i over remaining curves
+    // plus the worst-case projection of remaining length (when a chain ends
+    // already heading sideways).
+    const latGap = target.lateral_offset_mm - pose.y_mm;
+    if (Math.abs(latGap) > remLat + remLen + tol.lateral_offset_mm) return;
 
     // Cap the depth.
     if (stack.length === maxPieceCount) return;

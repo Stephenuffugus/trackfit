@@ -7,6 +7,7 @@ import { InventoryList } from "./components/InventoryList";
 import { GapCard } from "./components/GapCard";
 import { ResultsList, type ResultsState } from "./components/ResultsList";
 import { PhotoModal } from "./components/PhotoModal";
+import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
 import { useInventory } from "./hooks/useInventory";
 import { usePhotoCapture } from "./hooks/usePhotoCapture";
 import {
@@ -76,6 +77,9 @@ export default function App() {
 
   // Photo modal.
   const [modalCtx, setModalCtx] = useState<ModalContext>(null);
+
+  // Reference-object measurement overlay.
+  const [measureOpen, setMeasureOpen] = useState(false);
 
   // Photo capture pipelines — one for inventory rows, one for the gap.
   const rowCapture = usePhotoCapture();
@@ -186,6 +190,25 @@ export default function App() {
   })();
 
   /* ------------------------------------------------------------------ */
+  /* Reference-object measurement                                       */
+  /* ------------------------------------------------------------------ */
+
+  const handleMeasureClick = () => {
+    if (!gapPhoto) return;
+    setMeasureOpen(true);
+  };
+
+  // Called by GapMeasureOverlay on Confirm. Writes the computed mm into
+  // the target field, switches the unit toggle to mm so the user sees
+  // the number they just confirmed (not a converted-to-inches version),
+  // and closes the overlay.
+  const handleMeasured = (gap_mm: number) => {
+    setTarget(parseFloat(gap_mm.toFixed(1)).toString());
+    setUnit("mm");
+    setMeasureOpen(false);
+  };
+
+  /* ------------------------------------------------------------------ */
   /* Solve                                                              */
   /* ------------------------------------------------------------------ */
 
@@ -228,6 +251,26 @@ export default function App() {
   };
 
   /* ------------------------------------------------------------------ */
+  /* Derived: flex pieces the user owns                                 */
+  /*                                                                    */
+  /* "Flex" means either the library JSON tagged it (preferred) or the  */
+  /* user typed "flex" into a manually-added row's label. We only need  */
+  /* label + length for the cut-template button, so we project down.    */
+  /* ------------------------------------------------------------------ */
+
+  const flexCandidates = useMemo(
+    () =>
+      inventory
+        .filter(
+          (row) =>
+            row.kind === "flex" ||
+            (row.kind === undefined && /flex/i.test(row.label)),
+        )
+        .map((row) => ({ label: row.label, length_mm: row.length_mm })),
+    [inventory],
+  );
+
+  /* ------------------------------------------------------------------ */
   /* Render                                                             */
   /* ------------------------------------------------------------------ */
 
@@ -264,9 +307,14 @@ export default function App() {
           onToleranceChange={setTolerance}
           onUnitChange={setUnit}
           onSolve={solve}
+          onMeasureClick={handleMeasureClick}
         />
 
-        <ResultsList state={results} unit={unit} />
+        <ResultsList
+          state={results}
+          unit={unit}
+          flexCandidates={flexCandidates}
+        />
 
         <footer className="app-footer">TRACKFIT v0.2 · prototype</footer>
       </div>
@@ -278,6 +326,13 @@ export default function App() {
         sizeText={modalSizeText}
         onClose={closeModal}
         onRemove={removeModalPhoto}
+      />
+
+      <GapMeasureOverlay
+        open={measureOpen}
+        photoSrc={gapPhoto}
+        onMeasured={handleMeasured}
+        onClose={() => setMeasureOpen(false)}
       />
 
       {/* Hidden file inputs — single-instance like v0.2, re-routed via the

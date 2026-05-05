@@ -2,6 +2,7 @@ import type { Solution } from "@trackfit/solver";
 import { IN_TO_MM } from "../lib/constants";
 import { unitSuffix } from "../lib/format";
 import type { Unit } from "../lib/types";
+import { CutTemplateButton } from "./CutTemplateButton";
 
 export type ResultKind = "fit" | "under" | "over";
 
@@ -12,6 +13,12 @@ interface Props {
   target_mm: number;
   /** stable color per piece label across this solve */
   labelColors: Record<string, string>;
+  /**
+   * Flex pieces from the user's inventory. Drilled in from App.tsx via
+   * ResultsList so the SUGGESTED callout can offer a 1:1 cut template when
+   * there's at least one flex source on hand.
+   */
+  flexCandidates: { label: string; length_mm: number }[];
 }
 
 /**
@@ -25,6 +32,7 @@ export function ResultCard({
   unit,
   target_mm,
   labelColors,
+  flexCandidates,
 }: Props) {
   const u = unitSuffix(unit);
   const isExact = solution.deviation_mm < 0.01;
@@ -83,6 +91,10 @@ export function ResultCard({
           {u}
         </span>{" "}
         piece to your inventory for an exact fit.
+        <CutTemplateButton
+          missingLengthMm={missing_mm}
+          flexCandidates={flexCandidates}
+        />
       </div>
     );
   }

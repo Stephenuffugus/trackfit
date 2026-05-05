@@ -18,6 +18,12 @@ export type ResultsState =
 interface Props {
   state: ResultsState;
   unit: Unit;
+  /**
+   * Flex inventory rows the user owns. Forwarded into each ResultCard so the
+   * SUGGESTED near-miss callout can offer the 1:1 cut-template button when at
+   * least one flex source is available.
+   */
+  flexCandidates: { label: string; length_mm: number }[];
 }
 
 /**
@@ -26,7 +32,7 @@ interface Props {
  *   - empty: target was missing/zero, or no fits and no near-misses
  *   - results: any combination of solutions / bestUnder / bestOver
  */
-export function ResultsList({ state, unit }: Props) {
+export function ResultsList({ state, unit, flexCandidates }: Props) {
   if (state.kind === "idle") {
     return <section className="results" id="results" />;
   }
@@ -83,6 +89,7 @@ export function ResultsList({ state, unit }: Props) {
             unit={unit}
             target_mm={target_mm}
             labelColors={labelColors}
+            flexCandidates={flexCandidates}
           />
         ))}
       </section>
@@ -99,6 +106,7 @@ export function ResultsList({ state, unit }: Props) {
           unit={unit}
           target_mm={target_mm}
           labelColors={labelColors}
+          flexCandidates={flexCandidates}
         />
       ) : null}
       {result.bestOver ? (
@@ -108,6 +116,7 @@ export function ResultsList({ state, unit }: Props) {
           unit={unit}
           target_mm={target_mm}
           labelColors={labelColors}
+          flexCandidates={flexCandidates}
         />
       ) : null}
     </section>

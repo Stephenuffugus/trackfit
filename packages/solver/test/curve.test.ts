@@ -307,6 +307,48 @@ describe("findCurveCombinations — 6.6 near-miss case (v0.2 parity)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Fast-path regression — all-straight inventory should delegate to 1D solver
+// (Trackfit Task #19). The v0.2 atlas inventory used to take ~70s in the
+// 2D recursive search; the all-straight fast path should reduce that to the
+// 1D solver's ≈1ms baseline.
+// ---------------------------------------------------------------------------
+describe("findCurveCombinations — all-straight fast path", () => {
+  // Lifted from subset-sum.test.ts (the v0.2 FastTrack inventory).
+  const IN_TO_MM_LOCAL = 25.4;
+  const inches = (n: number) => n * IN_TO_MM_LOCAL;
+  const fastTrackInventory: CurveInventoryItem[] = [
+    { label: '1 3/8" fitter', kind: "straight", length_mm: inches(1.375), qty: 4 },
+    { label: '1 3/4" straight', kind: "straight", length_mm: inches(1.75), qty: 4 },
+    { label: '4 1/2" straight', kind: "straight", length_mm: inches(4.5), qty: 4 },
+    { label: '5" straight', kind: "straight", length_mm: inches(5), qty: 4 },
+    { label: '10" straight', kind: "straight", length_mm: inches(10), qty: 4 },
+  ];
+
+  it("falls back to fast 1D path when inventory is all-straight and target has no offset/rotation", () => {
+    const target: CurveTarget = {
+      length_mm: 381,
+      lateral_offset_mm: 0,
+      angle_degrees: 0,
+    };
+    const tol: CurveTolerance = {
+      length_mm: 2,
+      lateral_offset_mm: 0.5,
+      angle_degrees: 0.5,
+    };
+
+    const t0 = performance.now();
+    const r = findCurveCombinations(fastTrackInventory, target, tol);
+    const elapsed = performance.now() - t0;
+
+    expect(r.solutions.length).toBeGreaterThan(0);
+    // The 1D solver runs in ≈1ms; the fast-path translation overhead is
+    // negligible. 50ms is a generous ceiling that still catches a regression
+    // back into the recursive search.
+    expect(elapsed).toBeLessThan(50);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Performance — design §4.4
 // ---------------------------------------------------------------------------
 describe("findCurveCombinations — performance", () => {

@@ -4,6 +4,8 @@
  * passed between components.
  */
 
+import type { TrackKind } from "@trackfit/library";
+
 export type Unit = "in" | "mm";
 
 export interface InventoryRow {
@@ -12,6 +14,13 @@ export interface InventoryRow {
   qty: number;
   /** base64 data URL or null */
   photo: string | null;
+  /**
+   * Track kind, propagated from the library JSON when a preset is loaded.
+   * Undefined for manually-added rows; consumers fall back to a label-based
+   * heuristic when this is missing. Optional so persisted v0.2 state is
+   * forward-compatible.
+   */
+  kind?: TrackKind;
   /** the solver's InventoryItem accepts arbitrary pass-through metadata */
   [extra: string]: unknown;
 }

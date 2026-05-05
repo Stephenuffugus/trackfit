@@ -1,6 +1,22 @@
 import { useEffect, useRef } from "react";
+import type { TrackKind } from "@trackfit/library";
 import { STORAGE_KEY } from "../lib/constants";
-import type { PersistedState } from "../lib/types";
+import type { InventoryRow, PersistedState } from "../lib/types";
+
+/** Mirror of TrackKind, used to validate persisted strings without importing
+ *  the library's runtime data. Keep in sync with @trackfit/library. */
+const VALID_KINDS: ReadonlySet<TrackKind> = new Set<TrackKind>([
+  "straight",
+  "curve",
+  "turnout",
+  "crossing",
+  "fitter",
+  "flex",
+  "rerailer",
+  "bumper",
+  "uncoupler",
+  "transition",
+]);
 
 /**
  * Debounced (250ms) localStorage autosave for the entire app state, matching
@@ -41,12 +57,20 @@ export function loadPersisted(): PersistedState | null {
     if (!parsed || !Array.isArray(parsed.inventory)) return null;
     return {
       unit: parsed.unit === "mm" ? "mm" : "in",
-      inventory: parsed.inventory.map((p) => ({
-        label: String(p.label || ""),
-        length_mm: Number(p.length_mm) || 0,
-        qty: Math.max(0, parseInt(String(p.qty), 10) || 0),
-        photo: p.photo || null,
-      })),
+      inventory: parsed.inventory.map((p): InventoryRow => {
+        const rawKind = (p as { kind?: unknown }).kind;
+        const kind =
+          typeof rawKind === "string" && VALID_KINDS.has(rawKind as TrackKind)
+            ? (rawKind as TrackKind)
+            : undefined;
+        return {
+          label: String(p.label || ""),
+          length_mm: Number(p.length_mm) || 0,
+          qty: Math.max(0, parseInt(String(p.qty), 10) || 0),
+          photo: p.photo || null,
+          ...(kind ? { kind } : {}),
+        };
+      }),
       gapPhoto: parsed.gapPhoto || null,
       target: parsed.target != null ? String(parsed.target) : "",
       tolerance: parsed.tolerance != null ? String(parsed.tolerance) : "0",

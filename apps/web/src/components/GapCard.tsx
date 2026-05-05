@@ -12,6 +12,12 @@ interface Props {
   onToleranceChange: (v: string) => void;
   onUnitChange: (u: Unit) => void;
   onSolve: () => void;
+  /**
+   * Open the reference-object measurement overlay. The button below the
+   * gap photo dispatches this; it's disabled when there's no gapPhoto to
+   * measure against.
+   */
+  onMeasureClick: () => void;
 }
 
 /**
@@ -29,6 +35,7 @@ export function GapCard({
   onToleranceChange,
   onUnitChange,
   onSolve,
+  onMeasureClick,
 }: Props) {
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") onSolve();
@@ -52,10 +59,25 @@ export function GapCard({
             <p className="hint">
               Snap a reference photo so you remember which gap this is.{" "}
               <em>
-                Coming soon: place a known-length object in frame to
-                auto-measure.
+                Snap a photo with a quarter or dollar bill in frame, then tap
+                Measure to extract the gap length.
               </em>
             </p>
+            <button
+              type="button"
+              className="measure-cta"
+              onClick={onMeasureClick}
+              disabled={!gapPhoto}
+              aria-describedby={gapPhoto ? undefined : "measure-cta-help"}
+            >
+              Measure with a reference →
+            </button>
+            {!gapPhoto && (
+              <span id="measure-cta-help" className="measure-cta-help">
+                Take a photo of the gap with a quarter or dollar bill in
+                frame, then tap Measure.
+              </span>
+            )}
           </div>
         </div>
 

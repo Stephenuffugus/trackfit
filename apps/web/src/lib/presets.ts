@@ -28,6 +28,10 @@ export function presetToInventory(system: TrackSystem): InventoryRow[] {
       length_mm: p.length_mm as number,
       qty: DEFAULT_PRESET_QTY,
       photo: null,
+      // Carry the library's kind through so downstream features (e.g. the
+      // 1:1 cut-template button) can detect flex pieces precisely without
+      // resorting to label string matching.
+      kind: p.kind,
     }));
 }
 

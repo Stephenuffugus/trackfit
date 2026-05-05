@@ -1,0 +1,58 @@
+# Trackfit Supabase project config.
+# Edit this file via `supabase init` defaults; only changes from the default
+# are tracked here so a future contributor sees what we deliberately picked.
+
+project_id = "trackfit"
+
+[api]
+enabled = true
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+# Inventory + gap photos are resized client-side to ≤ 1200px JPEG @ 0.82 quality
+# before upload (see apps/web/src/lib/photo.ts) — typical size is 100-200KB.
+# 5 MiB cap protects against accidental full-resolution uploads.
+
+[auth]
+enabled = true
+site_url = "https://stephenuffugus.github.io/trackfit/"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "http://localhost:5173/trackfit/",
+]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false  # magic-link only; users get the link in their inbox
+secure_password_change = true
+
+[auth.email.template.magic_link]
+subject = "Your Trackfit sign-in link"
+
+# SMTP — configure custom SMTP (Resend / Postmark / SES) before going past the
+# free-tier ~4-emails/hour built-in limit. See docs/preflight/supabase.md.
+
+[edge_runtime]
+enabled = true
