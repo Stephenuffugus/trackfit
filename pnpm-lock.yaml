@@ -19,6 +19,9 @@ importers:
       '@trackfit/library':
         specifier: workspace:*
         version: link:../../packages/library
+      '@trackfit/marketplace':
+        specifier: workspace:*
+        version: link:../../packages/marketplace
       '@trackfit/measure':
         specifier: workspace:*
         version: link:../../packages/measure
