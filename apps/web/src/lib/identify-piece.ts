@@ -252,20 +252,35 @@ function realPhotoIdEnabled(): boolean {
 }
 
 /**
- * Real call wrapper. Currently unreachable behind the env flag — we're
- * gating any actual API spend on the validation stack reaching Layer 4.
- * Left as a typed code path so flipping the flag later is a one-line
- * change rather than a fresh feature.
+ * URL of the photo-ID proxy. Set at build time via the
+ * VITE_PHOTO_ID_PROXY_URL env var; in v0.3.4 this points to a
+ * Cloudflare Worker (see infra/cloudflare-worker/). Falls back to
+ * `/api/identify-piece` so a future Vite-proxied dev setup or a
+ * same-origin deploy still works.
+ */
+function photoIdProxyUrl(): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const env = (import.meta as any).env;
+    const url = typeof env?.VITE_PHOTO_ID_PROXY_URL === "string" ? env.VITE_PHOTO_ID_PROXY_URL.trim() : "";
+    return url.length > 0 ? url : "/api/identify-piece";
+  } catch {
+    return "/api/identify-piece";
+  }
+}
+
+/**
+ * Real call wrapper. The Cloudflare Worker (or any compatible proxy)
+ * is the only place the Anthropic key lives — never expose it to the
+ * client. On any failure, return null and let the caller fall back
+ * to the stub (handoff §3 — never block the user).
  */
 async function tryRealIdentify(
   photoBase64: string,
   hint?: ContextHint,
 ): Promise<IdentifyResult | null> {
-  // TODO(photo-id-real): wire this to supabase/functions/identify-piece/
-  // once Layer 4 (live tester validation) signs off and the budget gate
-  // opens. The proxy is the only place the Anthropic key lives.
   try {
-    const res = await fetch("/api/identify-piece", {
+    const res = await fetch(photoIdProxyUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

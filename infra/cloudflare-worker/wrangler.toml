@@ -1,0 +1,17 @@
+# Optional: Cloudflare Wrangler config for CLI deploy. Stephen does not
+# need this — the dashboard paste-and-save flow in /docs/SETUP-PHOTO-ID.md
+# is the supported path. This file exists so a future maintainer who
+# prefers `wrangler deploy` can use it without re-creating.
+
+name = "trackfit-vision"
+main = "src/index.ts"
+compatibility_date = "2026-05-05"
+
+# Set ANTHROPIC_API_KEY as an encrypted secret, NOT a plaintext var:
+#   wrangler secret put ANTHROPIC_API_KEY
+#
+# Optional secrets / vars:
+#   MODEL                — override default Haiku 4.5
+#   ALLOWED_ORIGINS      — comma-separated list (defaults to trackfit
+#                          custom domain + GitHub Pages URL + localhost)
+#   MAX_IMAGE_BYTES      — int; default 2097152 (2 MB)

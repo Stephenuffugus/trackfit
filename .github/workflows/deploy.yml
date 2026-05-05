@@ -64,6 +64,25 @@ jobs:
           # domain. Until DNS propagates, the github.io/trackfit/ URL will
           # 404 on its assets — that's acceptable; it's a temporary state.
           VITE_BASE_PATH: /
+          # Photo-ID activation. When VITE_USE_REAL_PHOTO_ID is "true" AND
+          # VITE_PHOTO_ID_PROXY_URL is set to a deployed Cloudflare Worker
+          # endpoint (see infra/cloudflare-worker/ + docs/SETUP-PHOTO-ID.md),
+          # the web client routes photo capture through the proxy. When
+          # either is missing, the stub identifier runs as before — there
+          # is no way for the build to silently break the photo-ID flow.
+          VITE_USE_REAL_PHOTO_ID: ${{ secrets.VITE_USE_REAL_PHOTO_ID }}
+          VITE_PHOTO_ID_PROXY_URL: ${{ secrets.VITE_PHOTO_ID_PROXY_URL }}
+          # Premium gate (optional). All four are passed through as
+          # secrets so URLs (Stripe / Lemon Squeezy) can change without
+          # touching the repo. When unset the modal shows the friendly
+          # "we're still figuring out a fair price" copy.
+          VITE_PREMIUM_ENABLED: ${{ secrets.VITE_PREMIUM_ENABLED }}
+          VITE_PREMIUM_LIFETIME_PRICE: ${{ secrets.VITE_PREMIUM_LIFETIME_PRICE }}
+          VITE_PREMIUM_MONTHLY_PRICE: ${{ secrets.VITE_PREMIUM_MONTHLY_PRICE }}
+          VITE_PREMIUM_LIFETIME_URL: ${{ secrets.VITE_PREMIUM_LIFETIME_URL }}
+          VITE_PREMIUM_MONTHLY_URL: ${{ secrets.VITE_PREMIUM_MONTHLY_URL }}
+          # Discord feedback link. When unset the row in Settings hides.
+          VITE_DISCORD_FEEDBACK_URL: ${{ secrets.VITE_DISCORD_FEEDBACK_URL }}
         run: pnpm --filter @trackfit/web run build
 
       - name: Configure Pages
