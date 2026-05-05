@@ -20,3 +20,9 @@ export type {
   CutTemplateResult,
   PaperSize,
 } from "./types.js";
+export { renderInventoryReport } from "./inventory.js";
+export type {
+  InventoryReportInput,
+  InventoryReportResult,
+  InventoryReportRow,
+} from "./inventory.js";
