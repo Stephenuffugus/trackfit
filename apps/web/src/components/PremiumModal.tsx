@@ -67,7 +67,8 @@ export function PremiumModal({ open, onClose }: Props) {
         <p className="settings-panel__title">Trackfit Premium</p>
         {anyTierReady ? (
           <p className="settings-row__hint">
-            More tools for the workbench. Pay once, keep forever.
+            Trackfit stays free. Founders pay once — no subscription, ever —
+            to unlock the extras and lock in this price for good.
           </p>
         ) : (
           <p className="settings-row__hint">
@@ -85,11 +86,12 @@ export function PremiumModal({ open, onClose }: Props) {
           >
             <span className="settings-row__label">
               <span className="settings-row__name">
-                Lifetime — once · {PREMIUM.lifetimePrice}
+                Founder — pay once · {PREMIUM.lifetimePrice}
               </span>
               <span className="settings-row__hint">
-                Photo-ID, cloud sync, printable cut templates, marketplace
-                shortcuts.
+                The printable inventory binder and the full vendor list now;
+                photo-ID auto-fill as it rolls out to Founders. No
+                subscription — and you keep this price for good.
               </span>
             </span>
           </button>

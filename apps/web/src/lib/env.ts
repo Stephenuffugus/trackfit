@@ -27,9 +27,15 @@ export const PREMIUM = {
    * feature yet.
    */
   enabled: asString(import.meta.env.VITE_PREMIUM_ENABLED) === "true",
-  /** Display price for the lifetime tier. Free-form string, e.g. "$29". */
-  lifetimePrice: asString(import.meta.env.VITE_PREMIUM_LIFETIME_PRICE) || "$29",
-  /** Display price for the monthly tier, e.g. "$3/mo". */
+  /**
+   * Display price for the one-time Founder tier. Free-form string. The
+   * launch model is a single one-time "Founder" license — no
+   * subscription (this audience resents recurring billing and the hobby
+   * buys software once). $19 is the launch anchor; Founders keep their
+   * price if it rises later. Override with VITE_PREMIUM_LIFETIME_PRICE.
+   */
+  lifetimePrice: asString(import.meta.env.VITE_PREMIUM_LIFETIME_PRICE) || "$19",
+  /** Display price for the (currently unused) monthly tier. */
   monthlyPrice: asString(import.meta.env.VITE_PREMIUM_MONTHLY_PRICE) || "$3/mo",
   /**
    * Stripe / Lemon Squeezy outbound URL for the lifetime tier. Empty

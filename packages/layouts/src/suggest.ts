@@ -21,9 +21,10 @@ import type {
 } from "./types.js";
 
 /** Maximum number of suggestions returned by `suggestLayouts`. */
-// Keep this >= the catalog size so scale-pinned templates never get sliced
-// off the end. The UI is responsible for any visual top-N truncation.
-const MAX_SUGGESTIONS = 20;
+// Derived from the catalog size so scale-pinned templates (incl. the
+// O-gauge set) never get sliced off the end as the catalog grows. The
+// UI is responsible for any visual top-N truncation / grouping.
+const MAX_SUGGESTIONS = LAYOUT_TEMPLATES.length;
 
 /**
  * Score window inside which the axes-short tiebreaker fires. Two

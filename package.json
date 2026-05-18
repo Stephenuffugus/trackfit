@@ -1,6 +1,6 @@
 {
   "name": "trackfit",
-  "version": "0.3.0-dev",
+  "version": "0.3.5",
   "private": true,
   "description": "Sectional-track combination finder for model railroaders.",
   "license": "UNLICENSED",

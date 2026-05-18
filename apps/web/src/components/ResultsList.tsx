@@ -149,6 +149,23 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
   //      message in a calm empty-state — no near-miss card to show.
   //   3. Neither — fall back to the generic empty state.
   if (!result.bestNearMiss) {
+    if (result.timed_out) {
+      // Timed out before *any* near-miss surfaced. Without this guard the
+      // user falls through to "nothing comes close", which is wrong — the
+      // solver simply ran out of clock, usually on a very large inventory.
+      return (
+        <section className="results" id="results">
+          <p className="label">Search ran out of time</p>
+          <div className="empty-state results-timeout-note">
+            The solver hit its 8-second budget before it could work out a fit
+            for this gap. That usually means a very large inventory or an
+            unusually tricky gap — not that nothing fits. Try breaking the gap
+            into shorter segments, or trim the inventory down to the box
+            you're actually working from, and run it again.
+          </div>
+        </section>
+      );
+    }
     if (result.suggestion) {
       return (
         <section className="results" id="results">

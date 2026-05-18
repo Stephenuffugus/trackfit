@@ -493,4 +493,79 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     complexity: 4,
     appeal: "Two trains, two mains, and a crossover so they can swap lanes.",
   },
+
+  // ---- O-gauge (Lionel-world) templates ------------------------------
+  // The universal templates above are sized around HO/N footprints; an
+  // O-gauge oval needs roughly twice the room. These three give the
+  // O-gauge / Lionel hobbyist scale-honest footprints instead of an
+  // HO-sized sketch that quietly under-reads their space.
+  {
+    id: "o-starter-oval",
+    name: "O-gauge starter oval",
+    description:
+      "The classic Lionel-world loop — a handful of O-gauge curves and a few straights and you have a running railroad. The layout that's circled Christmas trees since the tinplate era.",
+    scales: ["O"],
+    requirements: {
+      straight_length_mm: 760,
+      curve_total_degrees: 360,
+    },
+    footprint: { width_mm: 1700, depth_mm: 1100 },
+    ascii_sketch: [
+      "    ___________________",
+      "   /                   \\",
+      "  |                     |",
+      "  |                     |",
+      "   \\___________________/",
+    ].join("\n"),
+    style: "starter",
+    complexity: 1,
+    appeal: "The O-gauge loop that's circled Christmas trees for a century.",
+  },
+
+  {
+    id: "o-loop-with-siding",
+    name: "O-gauge loop with siding",
+    description:
+      "An O-gauge oval with a stub siding off the main, so you can park a second locomotive or a string of cars while another train keeps running. Two O-gauge turnouts do the work.",
+    scales: ["O"],
+    requirements: {
+      straight_length_mm: 1400,
+      curve_total_degrees: 360,
+      turnouts: 2,
+    },
+    footprint: { width_mm: 2100, depth_mm: 1300 },
+    ascii_sketch: [
+      "    ___________________",
+      "   /                   \\",
+      "  |   ____Y__________   |",
+      "  |                     |",
+      "   \\__Y________________/",
+    ].join("\n"),
+    style: "continuous-loop",
+    complexity: 3,
+    appeal: "Room to stash a second train without unhooking — the O-gauge workhorse.",
+  },
+
+  {
+    id: "christmas-tree-loop-o",
+    name: "Christmas tree loop (O)",
+    description:
+      "A compact O-gauge oval sized to ring a Christmas tree — the Lionel-under-the-tree tradition. Short straights, the tight end of O-gauge curves, set up in an afternoon and left for the season.",
+    scales: ["O"],
+    requirements: {
+      straight_length_mm: 500,
+      curve_total_degrees: 360,
+    },
+    footprint: { width_mm: 1500, depth_mm: 1300 },
+    ascii_sketch: [
+      "       _____________",
+      "      /             \\",
+      "     |       *       |",
+      "     |      /|\\      |",
+      "      \\_____|_______/",
+    ].join("\n"),
+    style: "starter",
+    complexity: 1,
+    appeal: "The Lionel-under-the-tree tradition, sized and ready to lay down.",
+  },
 ];

@@ -1,6 +1,6 @@
 {
   "name": "@trackfit/web",
-  "version": "0.3.0-dev",
+  "version": "0.3.5",
   "private": true,
   "type": "module",
   "description": "Trackfit PWA — Vite + React port of the v0.2 prototype.",

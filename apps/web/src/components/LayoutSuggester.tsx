@@ -660,6 +660,20 @@ export function LayoutSuggester({ open, inventory, onClose }: Props) {
     });
   }, [allSuggestions, styleFilter, footprintFilter]);
 
+  // Split into "build it today" vs "you're close". `filtered` is already
+  // sorted buildable-first by the engine, so this just partitions it —
+  // no re-sort. Older users stop reading after the first cards; a visible
+  // header for each group is the difference between "I can build three
+  // things right now" landing or not.
+  const buildableNow = useMemo(
+    () => filtered.filter((s) => s.buildable),
+    [filtered],
+  );
+  const closeToBuilding = useMemo(
+    () => filtered.filter((s) => !s.buildable),
+    [filtered],
+  );
+
   // Focus trap + ESC + focus restoration. Lands initial focus on the
   // first focusable inside the modal — that's the first filter chip.
   // Acceptable; older users tab forward into the cards naturally from
@@ -739,16 +753,45 @@ export function LayoutSuggester({ open, inventory, onClose }: Props) {
               : "No layouts match those filters. Try widening one of the chips."}
           </p>
         ) : (
-          <ul className="layout-suggester-list">
-            {filtered.map((s) => (
-              <LayoutCard
-                key={s.template.id}
-                suggestion={s}
-                unit={unit}
-                scale={scaleFilter}
-              />
-            ))}
-          </ul>
+          <>
+            {buildableNow.length > 0 ? (
+              <>
+                <p className="hint layout-group-head">
+                  ✓ You can build {buildableNow.length === 1 ? "this" : "these"}{" "}
+                  now ({buildableNow.length})
+                </p>
+                <ul className="layout-suggester-list">
+                  {buildableNow.map((s) => (
+                    <LayoutCard
+                      key={s.template.id}
+                      suggestion={s}
+                      unit={unit}
+                      scale={scaleFilter}
+                    />
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {closeToBuilding.length > 0 ? (
+              <>
+                <p className="hint layout-group-head">
+                  {buildableNow.length > 0
+                    ? `You're close to ${closeToBuilding.length === 1 ? "this one" : "these"} (${closeToBuilding.length})`
+                    : `Nothing's a perfect match yet — but you're close to ${closeToBuilding.length === 1 ? "this" : "these"} (${closeToBuilding.length})`}
+                </p>
+                <ul className="layout-suggester-list">
+                  {closeToBuilding.map((s) => (
+                    <LayoutCard
+                      key={s.template.id}
+                      suggestion={s}
+                      unit={unit}
+                      scale={scaleFilter}
+                    />
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </>
         )}
 
         <div className="modal-actions">

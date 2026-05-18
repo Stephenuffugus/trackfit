@@ -9,6 +9,67 @@ Newest entries on top.
 
 ---
 
+## v0.3.5 — 2026-05-18 (launch-prep pass)
+
+First version cut for a public, paid launch. Engine hardening + the
+monetization decision, no speculative features.
+
+### Engine
+
+#### O-gauge layout templates (`packages/layouts/src/catalog.ts`)
+
+Added three `scales: ["O"]` templates — `o-starter-oval`,
+`o-loop-with-siding`, `christmas-tree-loop-o` — with O-honest
+footprints (1500–2100 mm wide). The v1 catalog was 20 universal /
+HO-N-pinned templates; an O-gauge (Lionel-world) user — the original
+v1 persona — saw HO-sized footprints quietly under-reading their
+space. Universal templates still surface for O; these add scale-true
+sketches. Numbers are plausible-not-precise per the catalog's own
+contract; no library-accuracy claim is implied.
+
+`MAX_SUGGESTIONS` in `suggest.ts` changed from a hardcoded `20` to
+`LAYOUT_TEMPLATES.length` so scale-pinned templates can never be
+sliced off the end as the catalog grows.
+
+#### Buildable vs. near-miss grouping (`LayoutSuggester.tsx`)
+
+The suggester rendered a flat list (engine-sorted buildable-first,
+but no visual break). Focus-group personas stop reading after the
+first few cards. Now partitions the already-sorted list into a
+"✓ You can build these now (N)" group and a "You're close to these
+(N)" group with plain-English headers. Presentational only — the
+deterministic ranking is untouched, no re-sort.
+
+#### Gap-solver timeout empty-state (`ResultsList.tsx`)
+
+If the solver hit its wall-clock budget *before any* near-miss
+surfaced, the user fell through to "Nothing in your inventory comes
+close to this gap" — false; it just ran out of clock on a large
+inventory. Added a `timed_out && !bestNearMiss` guard with an honest
+"ran out of time, not 'nothing fits'" message. (The `timed_out` +
+*has* near-miss case was already handled; this was the missing edge.)
+
+### Monetization
+
+Launch model decided: a single **one-time Founder license** (no
+subscription — this demographic resents recurring billing; the hobby
+buys software once). `env.ts` `lifetimePrice` default `$29` → `$19`.
+`PremiumModal` copy reworked to (a) be Founder-framed and (b) stop
+overselling: it no longer claims cloud sync (not deployed) or paid
+cut-templates (cut templates are free); it now states the inventory
+binder + full vendor list are live and photo-ID auto-fill "rolls out
+to Founders". Photo-ID stays on the stub — no paid Vision spend until
+there is a Founder-revenue signal. Payment link still env-gated:
+unset → honest fake-door; set → real buy link. No Stripe SDK, no
+analytics added.
+
+### Packaging
+
+Version off the perpetual `0.3.0-dev` → `0.3.5`. README rewritten
+from a one-line stub to an accurate, claim-safe project README.
+
+---
+
 ## v0.3.4 — 2026-05-05 (fourth pass, same day)
 
 ### Round-2 focus-group fixes (M-effort)
