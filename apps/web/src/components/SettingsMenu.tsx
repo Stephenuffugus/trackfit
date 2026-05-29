@@ -456,6 +456,21 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
               </span>
             </a>
           ) : null}
+          {/* Report-an-issue mailto. Always shown — email is the lowest-
+              friction channel for this audience and doubles as the support
+              path the launch strategy leans on (reply within a day). */}
+          <a
+            href="mailto:stevieweedseed@gmail.com?subject=Trackfit%20issue%20or%20feedback"
+            className="settings-row settings-row--button"
+          >
+            <span className="settings-row__label">
+              <span className="settings-row__name">Report an issue</span>
+              <span className="settings-row__hint">
+                Spotted a wrong number or something confusing? Email me and
+                I&apos;ll take a look.
+              </span>
+            </span>
+          </a>
           {PREMIUM.enabled ? (
             isPremium(premiumState) ? (
               // Active-license display row. Not a button — the user

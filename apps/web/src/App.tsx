@@ -35,6 +35,7 @@ import {
 } from "./lib/constants";
 import { formatLength, parseLengthExpression, unitSuffix } from "./lib/format";
 import { matchPresetId, presetToInventory, presetUnit } from "./lib/presets";
+import { distinctScales, formatScales } from "./lib/scale-check";
 import { isOnboarded, loadPrefs, setOnboarded } from "./lib/prefs";
 import {
   AUTO_FILL_CONFIDENCE_THRESHOLD,
@@ -105,6 +106,18 @@ export default function App() {
   useEffect(() => {
     setActivePresetId(matchPresetId(inventory, listSystems()));
   }, [inventory]);
+
+  // Mixed-scale guardrail. Different scales are different track gauges and
+  // can't physically connect; the geometry-only solver wouldn't know that,
+  // so we warn before it suggests an unbuildable combination. Dismissal is
+  // keyed to the scale set, so it re-appears if the user mixes a new scale.
+  const mixedScales = useMemo(() => distinctScales(inventory), [inventory]);
+  const scaleSignature = mixedScales.join(",");
+  const [dismissedScaleSig, setDismissedScaleSig] = useState<string | null>(
+    null,
+  );
+  const showScaleNotice =
+    mixedScales.length >= 2 && dismissedScaleSig !== scaleSignature;
 
   // Results state.
   const [results, setResults] = useState<ResultsState>({ kind: "idle" });
@@ -829,6 +842,22 @@ export default function App() {
           onReset={handleReset}
           onShowIntro={handleShowIntro}
         />
+
+        {showScaleNotice ? (
+          <p className="suggest-warning" role="status">
+            Heads up — your inventory mixes {formatScales(mixedScales)} track.
+            Those are different track gauges, so the pieces don&apos;t connect
+            to each other and some suggested combinations may not physically
+            fit together.{" "}
+            <button
+              type="button"
+              className="suggest-warning__dismiss"
+              onClick={() => setDismissedScaleSig(scaleSignature)}
+            >
+              Got it
+            </button>
+          </p>
+        ) : null}
 
         <GapCard
           gapPhoto={gapPhoto}
