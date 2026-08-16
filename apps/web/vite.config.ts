@@ -24,22 +24,11 @@ export default defineConfig({
       includeAssets: ["icon.svg", "icon-maskable.svg", "manifest.webmanifest"],
       workbox: {
         // Allow our base64 photos and Google Fonts to be cached at runtime.
-        globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: "StaleWhileRevalidate",
-            options: { cacheName: "google-fonts-stylesheets" },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-webfonts",
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
-        ],
+        globPatterns: ["**/*.{js,css,html,svg,png,webmanifest,woff2}"],
+        /* No runtimeCaching for fonts any more: they are self-hosted in
+           /fonts and picked up by globPatterns, so there is nothing left to
+           fetch at runtime. Keeping the Google rules would have quietly
+           re-enabled the request the moment a stylesheet referenced them. */
       },
     }),
   ],
