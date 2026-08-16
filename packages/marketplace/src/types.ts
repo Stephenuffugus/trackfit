@@ -1,5 +1,11 @@
 /**
  * Marketplace link types. Pure data — no fetching, no UI.
+ *
+ * These are plain, un-tagged vendor SEARCH urls. There is deliberately no
+ * affiliate-tag field and no way to attach one: the ordering in search.ts
+ * is editorial (locale, condition preference, SKU precision) and no vendor
+ * can pay to move up it. Removing the hook rather than leaving it unset is
+ * the point — an unused field is an invitation.
  */
 
 export type Vendor =
@@ -30,12 +36,6 @@ export interface MarketplaceLink {
    * to undefined if we can't make a confident statement.
    */
   hint?: string;
-  /**
-   * Affiliate-tag hook. The link generator passes through any non-empty
-   * affiliate config it's given; this field is null until we sign up for
-   * each program. Phase 3 commercial path per strategy doc §4.2.
-   */
-  affiliate_tag?: string;
 }
 
 export interface MarketplaceQuery {
@@ -52,8 +52,6 @@ export interface MarketplaceQuery {
 }
 
 export interface MarketplaceConfig {
-  /** affiliate tags by vendor; if absent, links are clean */
-  affiliate_tags?: Partial<Record<Vendor, string>>;
   /** locale hint for region-correct vendor ordering */
   locale?: "US" | "UK" | "EU" | "JP";
 }

@@ -15,19 +15,11 @@ export const ONBOARDED_STORAGE_KEY = "trackfit.onboarded.v1";
 export interface Prefs {
   largeText: boolean;
   highContrast: boolean;
-  /**
-   * When true, every captured photo is fed through the photo-ID
-   * identifier and (if confident) used to auto-fill the row. Default
-   * on — the gesture is the whole point of the feature for tests with
-   * older hobbyists. Users who don't want the magic can flip it off.
-   */
-  identify_on_capture: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
   largeText: false,
   highContrast: false,
-  identify_on_capture: true,
 };
 
 export function loadPrefs(): Prefs {
@@ -36,15 +28,12 @@ export function loadPrefs(): Prefs {
     if (!raw) return DEFAULT_PREFS;
     const parsed = JSON.parse(raw) as Partial<Prefs> | null;
     if (!parsed) return DEFAULT_PREFS;
+    // Rebuilt field-by-field rather than spread, so a stored blob from an
+    // older build (which carried a now-retired `identify_on_capture` flag)
+    // upgrades itself the next time savePrefs runs.
     return {
       largeText: !!parsed.largeText,
       highContrast: !!parsed.highContrast,
-      // Default-on: undefined in legacy storage means "user has never
-      // expressed an opinion", and the default is on.
-      identify_on_capture:
-        parsed.identify_on_capture === undefined
-          ? true
-          : !!parsed.identify_on_capture,
     };
   } catch {
     return DEFAULT_PREFS;

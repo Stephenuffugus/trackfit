@@ -27,10 +27,13 @@
        v0.2 adds: per-piece photo capture, gap photo, localStorage persistence,
        near-miss suggestions ("you'd need a 2.5\" piece to close this gap").
 
-       HANDOFF NOTES for Claude Code:
-         - Search for "TODO(vision)" markers — these are where a vision API
-           (e.g. Anthropic Messages API w/ image input) should be wired in
-           to auto-extract piece label + length from a captured photo.
+       HANDOFF NOTES (historical — this file is the superseded v0.2
+       prototype; the shipping app lives in apps/web):
+         - The "TODO(vision)" markers below are DEAD. Photo identification
+           was considered and deliberately dropped: Trackfit is a free,
+           offline, no-account app and a vision API would mean a server,
+           a per-call cost, and users' photos leaving their device. Photos
+           stay a purely local memory aid. Do not wire these up.
          - Search for "TODO(measure)" — reference-object scaling or AR
            measurement of the physical gap from the gap photo.
          - Search for "TODO(curves)" — sectional curves are a 2D problem
@@ -726,7 +729,7 @@
      =====================================================================
      Currently the photo is purely visual / mnemonic — it helps the user
      identify which row is which when they have many similar pieces.
-     TODO(vision): when a row photo is captured, send it to a vision-capable
+     TODO(vision) [DROPPED — see header note]: when a row photo is captured, send it to a vision-capable
      LLM with a prompt like "Identify this model railroad track piece. Return
      JSON {brand, system, label, nominal_length_in_or_mm}". Auto-fill the
      row's label and length fields with the result, and let the user confirm.

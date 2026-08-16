@@ -2,7 +2,6 @@ import type {
   MarketplaceConfig,
   MarketplaceLink,
   MarketplaceQuery,
-  Vendor,
 } from "./types.js";
 
 /**
@@ -15,6 +14,11 @@ import type {
  *
  * No network calls happen here. The strings are URL-encoded and ready to
  * `window.open()` from the UI.
+ *
+ * Every URL is a plain public search query with no referral, tracking or
+ * affiliate parameter attached, and the ranking above is the only thing
+ * that decides order. Nobody pays to be in this list, and there is no
+ * field on MarketplaceLink through which they could.
  */
 export function searchLinks(
   query: MarketplaceQuery,
@@ -41,7 +45,6 @@ export function searchLinks(
       `&_sacat=0&LH_TitleDesc=1`,
     precision: sku ? "sku" : "fuzzy",
     rationale: "Best for used and discontinued pieces; widest selection.",
-    affiliate_tag: config.affiliate_tags?.ebay,
   });
 
   // Trainz.com — strong US sectional/secondhand.
@@ -51,7 +54,6 @@ export function searchLinks(
     url: `https://www.trainz.com/search?q=${enc}`,
     precision: "fuzzy",
     rationale: "Specialty model-railroad shop; good for both new and used.",
-    affiliate_tag: config.affiliate_tags?.trainz,
   });
 
   // Walthers — major distributor, US.
@@ -62,7 +64,6 @@ export function searchLinks(
     precision: "fuzzy",
     rationale:
       "Largest US model-railroad catalog; usually stocks everything in production.",
-    affiliate_tag: config.affiliate_tags?.walthers,
   });
 
   // ModelTrainStuff
@@ -72,7 +73,6 @@ export function searchLinks(
     url: `https://www.modeltrainstuff.com/search?q=${enc}`,
     precision: "fuzzy",
     rationale: "Reliable US dealer; often-discounted pricing.",
-    affiliate_tag: config.affiliate_tags?.modeltrainstuff,
   });
 
   // Tower Hobbies
@@ -82,7 +82,6 @@ export function searchLinks(
     url: `https://www.towerhobbies.com/search/?text=${enc}`,
     precision: "fuzzy",
     rationale: "Generalist hobby retailer; sometimes carries hard-to-find SKUs.",
-    affiliate_tag: config.affiliate_tags?.["tower-hobbies"],
   });
 
   // Hattons (UK), Reynaulds (Märklin)
@@ -92,7 +91,6 @@ export function searchLinks(
     url: `https://www.hattons.co.uk/searchresults.aspx?q=${enc}`,
     precision: "fuzzy",
     rationale: "UK specialist — best for Hornby, Peco, Bachmann Branchline.",
-    affiliate_tag: config.affiliate_tags?.hattons,
   });
 
   if (
@@ -105,7 +103,6 @@ export function searchLinks(
       url: `https://www.reynaulds.com/search.aspx?q=${enc}`,
       precision: "fuzzy",
       rationale: "US Märklin specialist; best source for C-Track and K-Track.",
-      affiliate_tag: config.affiliate_tags?.reynaulds,
     });
   }
 
@@ -116,7 +113,6 @@ export function searchLinks(
     url: `https://www.amazon.com/s?k=${enc}`,
     precision: "fuzzy",
     rationale: "Convenience option; selection is patchy and prices vary.",
-    affiliate_tag: config.affiliate_tags?.amazon,
   });
 
   return rank(links, query, locale);

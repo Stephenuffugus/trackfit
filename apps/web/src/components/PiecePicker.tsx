@@ -44,8 +44,7 @@ interface Props {
  *     .btn / .field-label tokens. No new colors, fonts, or shadows.
  *
  * The picker entries are 56px tall (matches the existing
- * .candidate-confirm__row idiom) — well above the WCAG 2.5.5 44px
- * floor.
+ * .measure-ref-btn idiom) — well above the WCAG 2.5.5 44px floor.
  */
 export function PiecePicker({
   open,

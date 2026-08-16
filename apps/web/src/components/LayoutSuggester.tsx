@@ -13,15 +13,9 @@ import {
 } from "@trackfit/marketplace";
 import { listSystems, type Scale, type TrackKind } from "@trackfit/library";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import { PREMIUM } from "../lib/env";
-import {
-  FREE_MARKETPLACE_VENDOR_COUNT,
-  isPremium,
-} from "../lib/premium";
 import { inferSystemForRows } from "../lib/presets";
 import type { InventoryRow, Unit } from "../lib/types";
 import { IN_TO_MM, STORAGE_KEY } from "../lib/constants";
-import { PremiumGate } from "./PremiumGate";
 
 interface Props {
   open: boolean;
@@ -391,8 +385,12 @@ function buildShoppingLinks(
   return [];
 }
 
-/** Display cap when premium is active — keeps the panel from sprawling. */
-const PREMIUM_VENDOR_DISPLAY_CAP = 8;
+/**
+ * Display cap for the per-card vendor list — purely a layout guard so one
+ * card can't sprawl down the modal. It sits at the full length of the
+ * ranked list, so in practice nothing is ever withheld.
+ */
+const VENDOR_DISPLAY_CAP = 8;
 
 /**
  * One layout result card. Self-contained so the open/close state per-card
@@ -415,22 +413,13 @@ function LayoutCard({
     unit,
   );
 
-  // Premium-aware vendor list. We compute the full ranked list once,
-  // then slice to the free cap for non-premium users. The "upgrade"
-  // strip surfaces underneath when there's content gated. When
-  // VITE_PREMIUM_ENABLED is false (preview / dev), behave like
-  // everyone is premium so we don't hide vendors from previewers.
+  // Full ranked vendor list, shown to everybody. The only slice is the
+  // layout guard above.
   const allLinks = useMemo(
     () => (showLinks ? buildShoppingLinks(suggestion, scale) : []),
     [showLinks, suggestion, scale],
   );
-  const premiumActive = !PREMIUM.enabled || isPremium();
-  const visibleLinks = premiumActive
-    ? allLinks.slice(0, PREMIUM_VENDOR_DISPLAY_CAP)
-    : allLinks.slice(0, FREE_MARKETPLACE_VENDOR_COUNT);
-  const gatedVendorCount = premiumActive
-    ? 0
-    : Math.max(0, allLinks.length - FREE_MARKETPLACE_VENDOR_COUNT);
+  const visibleLinks = allLinks.slice(0, VENDOR_DISPLAY_CAP);
 
   return (
     <li className={`layout-card ${badge.className}`}>
@@ -472,33 +461,21 @@ function LayoutCard({
             <span aria-hidden="true">{showLinks ? " ▲" : " ▼"}</span>
           </button>
           {showLinks ? (
-            <>
-              <ul className="layout-card-shop-list">
-                {visibleLinks.map((link) => (
-                  <li key={link.vendor}>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer">
-                      {link.label}
-                    </a>
-                    <span className="layout-card-shop-rationale">
-                      {link.rationale}
-                    </span>
-                  </li>
-                ))}
-                {visibleLinks.length === 0 ? (
-                  <li className="hint">No vendor suggestions for this gap.</li>
-                ) : null}
-              </ul>
-              {gatedVendorCount > 0 ? (
-                <PremiumGate
-                  reason={`See ${gatedVendorCount} more vendor${gatedVendorCount === 1 ? "" : "s"} with Premium.`}
-                  onUpgrade={() => {
-                    window.dispatchEvent(
-                      new CustomEvent("trackfit:open-upgrade"),
-                    );
-                  }}
-                />
+            <ul className="layout-card-shop-list">
+              {visibleLinks.map((link) => (
+                <li key={link.vendor}>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    {link.label}
+                  </a>
+                  <span className="layout-card-shop-rationale">
+                    {link.rationale}
+                  </span>
+                </li>
+              ))}
+              {visibleLinks.length === 0 ? (
+                <li className="hint">No vendor suggestions for this gap.</li>
               ) : null}
-            </>
+            </ul>
           ) : null}
         </div>
       )}

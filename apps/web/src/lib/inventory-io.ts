@@ -169,12 +169,12 @@ export function validate(input: unknown): InventoryBackup {
   }
   if (obj.prefs && typeof obj.prefs === "object") {
     const p = obj.prefs as Record<string, unknown>;
+    // Only the two comfort toggles survive an import. Backups written by
+    // older builds may carry extra keys (e.g. the retired
+    // `identify_on_capture`); they are dropped rather than round-tripped.
     out.prefs = {
       largeText: !!p.largeText,
       highContrast: !!p.highContrast,
-      // Default-on when the imported backup pre-dates the photo-ID feature.
-      identify_on_capture:
-        p.identify_on_capture === undefined ? true : !!p.identify_on_capture,
     };
   }
   if (obj.unit === "mm" || obj.unit === "in") {
@@ -321,9 +321,9 @@ export function estimateBackupBytes(backup: InventoryBackup): number {
  *
  * Threshold: the backup itself exceeds SAFE_STORAGE_BUDGET_BYTES. Import
  * overwrites the existing state under STORAGE_KEY, so we don't need to
- * add current usage — but other keys (premium state, photo-id quota,
- * onboarding flag, etc.) still cost a few bytes, well below the noise
- * floor at this scale.
+ * add current usage — but other keys (comfort prefs, the onboarding
+ * flag) still cost a few bytes, well below the noise floor at this
+ * scale.
  */
 export function buildImportSizeWarning(
   backup: InventoryBackup,

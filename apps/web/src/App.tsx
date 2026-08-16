@@ -17,7 +17,6 @@ import { PhotoModal } from "./components/PhotoModal";
 import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
 import { LayoutSuggester } from "./components/LayoutSuggester";
 import { Onboarding } from "./components/Onboarding";
-import { CandidateConfirmSheet } from "./components/CandidateConfirmSheet";
 import { StorageWarningToast } from "./components/StorageWarningToast";
 import { UndoToast } from "./components/UndoToast";
 import { useUndoableInventory } from "./hooks/useUndoableInventory";
@@ -36,13 +35,7 @@ import {
 import { formatLength, parseLengthExpression, unitSuffix } from "./lib/format";
 import { matchPresetId, presetToInventory, presetUnit } from "./lib/presets";
 import { distinctScales, formatScales } from "./lib/scale-check";
-import { isOnboarded, loadPrefs, setOnboarded } from "./lib/prefs";
-import {
-  AUTO_FILL_CONFIDENCE_THRESHOLD,
-  identifyPiece,
-  type IdentifyCandidate,
-} from "./lib/identify-piece";
-import { consumePhotoIdQuota } from "./lib/premium";
+import { isOnboarded, setOnboarded } from "./lib/prefs";
 import type { GapShape, InventoryRow, Unit } from "./lib/types";
 import SolverWorker from "./workers/solver.worker.ts?worker";
 import type { SolverRequest, SolverResponse } from "./workers/solver.worker";
@@ -145,14 +138,10 @@ export default function App() {
     () => !isOnboarded(),
   );
 
-  // The Layer-2 fake-door pricing test that previously sat here is
-  // disabled — superseded by the Premium gate. The validation signal
-  // is now "did the user click Upgrade?" rather than "did they pick a
-  // price point on a survey?". The <PremiumPricingTest> component
-  // stays on disk for possible re-use, but it no longer renders and
-  // no window hook fires from the photo-ID path.
-
   // Photo capture pipelines — one for inventory rows, one for the gap.
+  // Photos are purely mnemonic: they help the user tell two similar rows
+  // apart and remember which gap they measured. Nothing is uploaded and
+  // nothing is inferred from them.
   const rowCapture = usePhotoCapture();
   const gapCapture = usePhotoCapture();
 
@@ -289,131 +278,6 @@ export default function App() {
   };
 
   /* ------------------------------------------------------------------ */
-  /* Photo-ID flow                                                      */
-  /* ------------------------------------------------------------------ */
-
-  // True while the stub identifier is running. Surfaces a tiny
-  // "Identifying…" toast at the bottom of the screen so the older user
-  // sees something happening between snap and result. Per handoff §3
-  // (never block the user) we keep the rest of the UI live.
-  const [identifying, setIdentifying] = useState(false);
-
-  // Candidate-confirm sheet state. Opens when the top-1 confidence
-  // didn't clear AUTO_FILL_CONFIDENCE_THRESHOLD; the user picks one
-  // (auto-fill happens) or punches out to manual entry.
-  const [confirmSheet, setConfirmSheet] = useState<{
-    rowIdx: number;
-    photoSrc: string;
-    candidates: IdentifyCandidate[];
-  } | null>(null);
-
-  /**
-   * Apply a chosen candidate's specs onto an inventory row. We reach
-   * past `updateField` (which only knows label/length/qty) and hit
-   * setInventory directly so kind / radius / arc / product_code can
-   * land in one atomic write.
-   */
-  const autoFillRowFromCandidate = (
-    idx: number,
-    c: IdentifyCandidate,
-  ) => {
-    setInventory((prev) => {
-      const next = prev.slice();
-      const row = next[idx];
-      if (!row) return prev;
-      const merged: InventoryRow = {
-        ...row,
-        label: c.label,
-        length_mm: c.length_mm,
-        kind: c.kind,
-      };
-      if (typeof c.radius_mm === "number") merged.radius_mm = c.radius_mm;
-      if (typeof c.arc_degrees === "number") merged.arc_degrees = c.arc_degrees;
-      if (c.product_code) merged.product_code = c.product_code;
-      next[idx] = merged;
-      return next;
-    });
-    // (Previously fired the Layer-2 pricing-test modal here. Disabled —
-    // superseded by the Premium gate; the upgrade button click is now
-    // the validation signal.)
-  };
-
-  // Tiny "quota left" toast shown after a successful auto-fill when
-  // the user is on the trial. Cleared by a setTimeout so it doesn't
-  // need its own component. Premium users never see this — quota is
-  // Infinity for them.
-  const [quotaToast, setQuotaToast] = useState<string | null>(null);
-
-  /**
-   * Run the (stubbed) identifier on a freshly-captured photo and
-   * route the result. Top-1 ≥ threshold auto-fills silently; below
-   * threshold opens the candidate-confirm sheet. Identification
-   * failure is silent — the photo is already attached and the
-   * existing manual-entry flow stays available (handoff §3).
-   *
-   * Photo-ID is a Premium feature with a 3-call lifetime free trial.
-   * Each invocation consumes one slot via `consumePhotoIdQuota()`;
-   * when the user is out, we open the upgrade modal instead. The
-   * photo is already attached at the call site (see
-   * `handleRowPhotoClick`) so the manual-entry path is unaffected
-   * by the gate — handoff §3 ("never block the user") applies even
-   * to gated features.
-   */
-  const runIdentifyOnRowPhoto = async (idx: number, photoDataUrl: string) => {
-    const quota = consumePhotoIdQuota();
-    if (!quota.allowed) {
-      // Out of free trials — open the upgrade modal via the same
-      // event the marketplace gate uses.
-      window.dispatchEvent(new CustomEvent("trackfit:open-upgrade"));
-      return;
-    }
-    setIdentifying(true);
-    try {
-      const result = await identifyPiece(photoDataUrl, { activePresetId });
-      const top = result.candidates[0];
-      if (!top) return;
-      // v0.3.3 — auto-fill ALSO requires that the row's label is empty
-      // OR matches the candidate's label. Margaret (focus-group P2-T3-F2)
-      // typed "Bachmann 9 inch" by hand and a confident stub silently
-      // clobbered it to "Snap-Track 9\" straight (S-9)". Silent data
-      // overwrite is the cardinal sin for tech-skeptical users; route
-      // through the confirm sheet so the user explicitly approves any
-      // label change.
-      const existingRow = inventory[idx];
-      const existingLabel = existingRow?.label?.trim() ?? "";
-      const wouldClobber =
-        existingLabel.length > 0 && existingLabel !== top.label.trim();
-      if (top.confidence >= AUTO_FILL_CONFIDENCE_THRESHOLD && !wouldClobber) {
-        autoFillRowFromCandidate(idx, top);
-      } else {
-        setConfirmSheet({
-          rowIdx: idx,
-          photoSrc: photoDataUrl,
-          candidates: result.candidates,
-        });
-      }
-      // After a successful (auto or sheet-routed) call, surface the
-      // photo-ID quota status. v0.3.3 — show on the FIRST identify too
-      // (was previously only "between full and empty", which surprised
-      // Margaret in focus-group P2-T4-F1 with a sudden gate). Premium
-      // users have remaining=Infinity and skip this entirely.
-      if (Number.isFinite(quota.remaining) && quota.remaining >= 0) {
-        const msg =
-          quota.remaining === 0
-            ? `That was your last free photo-ID. Premium unlocks unlimited.`
-            : `${quota.remaining} of ${quota.total} free photo-ID${quota.remaining === 1 ? "" : "s"} left.`;
-        setQuotaToast(msg);
-        window.setTimeout(() => setQuotaToast(null), 2500);
-      }
-    } catch (err) {
-      // Never block — the photo is already attached, manual entry works.
-      console.error("Trackfit: photo identification failed", err);
-    } finally {
-      setIdentifying(false);
-    }
-  };
-
-  /* ------------------------------------------------------------------ */
   /* Photo flow                                                         */
   /* ------------------------------------------------------------------ */
 
@@ -423,36 +287,8 @@ export default function App() {
     if (item.photo) {
       setModalCtx({ kind: "row", idx });
     } else {
-      rowCapture.capture((dataUrl) => {
-        setPhoto(idx, dataUrl);
-        // Read prefs at capture time, not at render time, so a toggle
-        // flipped while a photo dialog is open is honored.
-        const prefs = loadPrefs();
-        if (prefs.identify_on_capture) {
-          // Fire-and-forget. The toast is the user-visible signal;
-          // we don't await here so the inventory render isn't gated
-          // on the stub's 600ms delay.
-          void runIdentifyOnRowPhoto(idx, dataUrl);
-        }
-      });
+      rowCapture.capture((dataUrl) => setPhoto(idx, dataUrl));
     }
-  };
-
-  const handleConfirmSheetPick = (c: IdentifyCandidate) => {
-    if (!confirmSheet) return;
-    autoFillRowFromCandidate(confirmSheet.rowIdx, c);
-    setConfirmSheet(null);
-  };
-
-  const handleConfirmSheetManual = () => {
-    // No-op on the inventory: the photo stays, the row is unchanged,
-    // and the user types the specs themselves. The sheet closes via
-    // its own onClose call after this.
-    setConfirmSheet(null);
-  };
-
-  const handleConfirmSheetClose = () => {
-    setConfirmSheet(null);
   };
 
   const handleGapPhotoClick = () => {
@@ -923,37 +759,6 @@ export default function App() {
       />
 
       <Onboarding open={onboardingOpen} onClose={handleOnboardingClose} />
-
-      {/* PremiumPricingTest disabled — superseded by Premium gate. The
-          file is preserved on disk for possible reuse. */}
-
-      <CandidateConfirmSheet
-        open={confirmSheet !== null}
-        candidates={confirmSheet?.candidates ?? []}
-        photoSrc={confirmSheet?.photoSrc ?? null}
-        onPick={handleConfirmSheetPick}
-        onManual={handleConfirmSheetManual}
-        onClose={handleConfirmSheetClose}
-      />
-
-      {identifying ? (
-        <div
-          className="identify-toast"
-          role="status"
-          aria-live="polite"
-        >
-          <span className="identify-toast__spinner" aria-hidden="true" />
-          Identifying…
-        </div>
-      ) : null}
-
-      {quotaToast && !identifying ? (
-        // Reuses the .identify-toast surface (a small bottom-anchored
-        // pill) so the photo-ID UX stays in one visual register.
-        <div className="identify-toast" role="status" aria-live="polite">
-          {quotaToast}
-        </div>
-      ) : null}
 
       {toast ? (
         <UndoToast

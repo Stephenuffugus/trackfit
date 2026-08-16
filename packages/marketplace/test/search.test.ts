@@ -69,13 +69,26 @@ describe("searchLinks", () => {
     expect(walthersIdx).toBeLessThan(amazonIdx);
   });
 
-  it("propagates affiliate_tag from config to MarketplaceLink", () => {
+  // Regression guard for the de-monetisation. Vendor links are a user
+  // convenience, not a revenue channel: no link may carry a referral or
+  // affiliate parameter, and no affiliate config may be honoured even if
+  // someone force-casts one in.
+  it("emits clean links with no affiliate or referral parameters", () => {
     const links = searchLinks(
-      { query: "anything" },
-      { affiliate_tags: { ebay: "trackfit-20" } },
+      { query: "Atlas Code 83 9-inch straight", condition_preference: "used" },
+      // Deliberately force-cast a config shape that no longer exists in the
+      // types. If someone re-adds the plumbing, this test fails.
+      { locale: "US", affiliate_tags: { ebay: "trackfit-20" } } as never,
     );
-    const ebay = links.find((l) => l.vendor === "ebay")!;
-    expect(ebay.affiliate_tag).toBe("trackfit-20");
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).not.toHaveProperty("affiliate_tag");
+      const params = new URL(link.url).searchParams;
+      for (const key of params.keys()) {
+        expect(key).not.toMatch(/^(tag|ref|aff|affiliate|campid|customid|utm_)/i);
+      }
+      expect(link.url).not.toMatch(/trackfit-20/);
+    }
   });
 });
 

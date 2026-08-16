@@ -45,19 +45,13 @@ the bottom and type it in.
 
 ### 3. Try the photo button
 
-Tap the empty photo box on any row, take a photo of one of your pieces,
-and watch what happens. You should see "Identifying…" for a moment, and
-then either the row should auto-fill, or a sheet appears asking which
-of three guesses is right.
+Tap the empty photo box on any row and take a photo of one of your
+pieces. It attaches to that row so you can tell two similar-looking
+rows apart at a glance.
 
-> **Note:** The photo identification is currently running on test data,
-> not your real photo. We're checking whether the *experience* feels
-> right before turning on the real AI — that part costs money and we
-> want to know it's worth paying for first. After three photo
-> identifications, the app will show a "Trackfit Premium" upgrade
-> screen. **Don't worry about it** — it's there so we can test whether
-> the upgrade flow makes sense, but no one will be charged anything
-> right now. Just close the screen and keep going.
+> **Note:** The photo is just a memory aid. Nothing is uploaded, nothing
+> is analysed, and nothing about it leaves your phone — it's stored in
+> your own browser alongside the rest of your inventory.
 
 ### 4. Try the gap solver — the main attraction
 
@@ -87,28 +81,21 @@ worth trying:
 - **Bigger text** — turns up the font size by 25%.
 - **Print inventory report** — generates a PDF binder of every piece
   you own, with photos. Useful for insurance or just for the shelf.
-  *(This is a paid feature, so tapping it shows the upgrade screen.
-  No charge, just curious what you think of it.)*
 - **Show intro again** — replays the welcome cards if you want a
   refresher.
 
 ---
 
-## A note on free vs. paid
+## A note on cost
 
-Most of Trackfit is **free forever** — the gap solver, the track
-libraries, the inventory list, the layout suggester, the cut templates,
-photos as visual mnemonic. We mean it. Those are the things that
-should help you on the basement floor with a pile of track.
+Trackfit is **free**. All of it, for everyone, forever — the gap solver,
+all sixteen track libraries, the inventory list, the layout suggester,
+the reference-object measurement, the 1:1 cut templates, the printable
+inventory binder, the full vendor list, row photos, and the JSON backup.
 
-A handful of features are planned as **Trackfit Premium** — photo-ID
-auto-fill (after the three free trials), the printable insurance-grade
-inventory binder, and the full eight-vendor "where to buy" list. Free
-users see the top two vendors, which is plenty for most needs.
-
-We haven't decided on a price yet. **One of the most useful things you
-can tell us is what *you* would consider fair.** No pressure. There's
-nothing to buy today.
+There is no paid tier, no subscription, no ads, and no account. Nothing
+is uploaded: the whole thing runs in your browser and your inventory
+stays on your device.
 
 ---
 
@@ -119,16 +106,11 @@ Don't write us a review. Just answer these in whatever form is easiest
 
 1. **What was the first thing that made you smile?**
 2. **What was the first thing that confused you?**
-3. **Was the photo step exciting, ordinary, or unnecessary?**
+3. **Was the photo step useful, ordinary, or unnecessary?**
 4. **The gap solver: did it tell you something you didn't already
    know?**
-5. **If Trackfit Premium cost money, what's a fair price?** Once-only
-   (e.g. $20? $30? $50?), yearly, monthly? "I'd never pay for this" is
-   a real answer too — it tells us we got the free tier wrong.
-6. **Did the line between free and paid features feel right?** Was
-   anything in the paid tier that you'd expect to be free, or vice
-   versa?
-7. **Who else in your hobby world would want this?**
+5. **Was anything harder to find than it should have been?**
+6. **Who else in your hobby world would want this?**
 
 ---
 

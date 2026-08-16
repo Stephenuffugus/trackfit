@@ -25,7 +25,7 @@ import {
 
 /**
  * In-memory localStorage shim with a settable failure mode. Mirrors the
- * pattern in premium.test.ts so the suites stay readable side-by-side.
+ * pattern in onboarding.test.ts so the suites stay readable side-by-side.
  *
  * `failNext` controls the next setItem call:
  *   - "quota" — throws a QuotaExceededError (Chrome / modern Safari).
