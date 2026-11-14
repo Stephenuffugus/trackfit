@@ -67,8 +67,8 @@ untouched. Every commit on this branch has been pushed to GitHub.
    removed. It was never deployed and gave different answers.
    `MONETIZE_HANDOFF.md` is headed SUPERSEDED.
 
-Tests: 25 new ones.
-- 11 loop tests: every plan closes, never over-uses a piece, never mixes
+Tests: 14 new ones.
+- 10 loop tests: every plan closes, never over-uses a piece, never mixes
   brands or radii, respects the table size, random boxes.
 - 1 test that the gap finder never uses more of a piece than you own.
 - 3 curved-gap tests.
