@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit: forum launch posts (drafts)
 
 **These are drafts for Stephen to post himself.** I can't and shouldn't
@@ -24,7 +26,7 @@ exist for a reason.
   general chat. Read the room first; if there's an existing "track
   planning software" thread, reply there rather than starting a new one.
 
-Link in every post: **https://trackfit.stevieweedseed.com/**. Free,
+Link in every post: **the app's address (see HANDOFF.md)**. Free,
 runs in the phone browser, nothing to install.
 
 ---
@@ -43,7 +45,7 @@ runs in the phone browser, nothing to install.
 > of you. It's called **Trackfit** and it's free, in your phone's browser,
 > nothing to install:
 >
-> **https://trackfit.stevieweedseed.com/**
+> **the app's address (see HANDOFF.md)**
 >
 > What it does:
 > - You tell it what's in your box (or photograph a piece).
@@ -73,7 +75,7 @@ runs in the phone browser, nothing to install.
 > you've got track on the floor, a gap to bridge, and you're doing
 > geometry in your head. It's a phone web app, no install, no account:
 >
-> **https://trackfit.stevieweedseed.com/**
+> **the app's address (see HANDOFF.md)**
 >
 > Tell it your inventory (N, HO, OO, O; 16 systems so far), measure the
 > gap with a coin or a bill as a reference, and it lists every
@@ -107,7 +109,7 @@ runs in the phone browser, nothing to install.
 > are reproducible and explainable, which matters for this hobby.
 >
 > Free, runs in the browser, installable as a PWA:
-> **https://trackfit.stevieweedseed.com/**
+> **the app's address (see HANDOFF.md)**
 >
 > 16 track systems, each piece with a source citation and verification
 > date. I treat library accuracy as non-negotiable. If you find a wrong
@@ -127,7 +129,7 @@ runs in the phone browser, nothing to install.
 
 > Quick share for anyone who's ever dumped their track box out and
 > wondered what they could actually build with it. **Trackfit** is a free
-> phone web app (no install): **https://trackfit.stevieweedseed.com/**
+> phone web app (no install): **the app's address (see HANDOFF.md)**
 >
 > Three things it does well:
 > 1. **Close a gap.** Measure it with a coin/bill, get every combination

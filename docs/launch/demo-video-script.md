@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit — demo video script (45–60s)
 
 The single most shareable moment is **quarter-in-the-gap → exact
@@ -66,7 +68,7 @@ buildable layouts, then the home screen.
 before you lay it down."
 
 **On-screen text:**
-*Free · no install · trackfit.stevieweedseed.com*
+*Free · no install · the app's address (see HANDOFF.md)*
 
 ---
 

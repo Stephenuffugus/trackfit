@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # What's new — v0.3.4 (2026-05-05)
 
 A short summary of what's shipped in this build, calibrated for

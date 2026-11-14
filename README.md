@@ -9,7 +9,7 @@ required.
 
 Built for the workbench, not the office. Mobile-first, installable PWA.
 
-**Live:** https://trackfit.stevieweedseed.com/
+**Live:** see HANDOFF.md (the app is moving to a Sky Wolf Studio address). Trackfit is a Sky Wolf Studio tool.
 
 ---
 
@@ -19,8 +19,12 @@ Built for the workbench, not the office. Mobile-first, installable PWA.
   ("missing piece") suggestion when there's no exact fit.
 - **Reference-object measurement** — lay a quarter, a dollar bill, or a
   piece you own in the gap and photograph it to get the length.
-- **"What can I build?"** — scores 20+ layout templates against the track
-  you actually own and shows what's buildable today vs. one trip away.
+- **"What can I build?"** — finds complete loops you can build today from
+  only the pieces you own (circles, ovals, rounded rectangles, figure eights
+  through a crossing), each one checked to close, drawn, with table space,
+  parts list, laying order, what is left over, and a second loop from the
+  leftovers. Ranked by how much of your track it uses. A rougher guide also
+  scores 20+ layout ideas from your totals.
 - **Track library** — 16 sectional systems across N/HO/OO/O and more, each
   piece carrying a source citation and a verification date.
 - **1:1 cut templates** — printable PDF cut guides for flex track.

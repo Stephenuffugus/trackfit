@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit — the founder story
 
 *Use this as the site "About" page, the long-form forum post, or the
@@ -63,4 +65,4 @@ That's the whole story. Lay it out before you lay it down.
 
 — Stephen
 
-**https://trackfit.stevieweedseed.com/**
+**the app's address (see HANDOFF.md)**

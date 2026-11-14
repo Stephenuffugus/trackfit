@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit: where to share + what to post
 
 A single action list. Work top to bottom at your own pace.
@@ -14,7 +16,7 @@ you'd share it, keep the optional $19 out of it (or mention it once, only
 where promo is clearly allowed), and reply to every response within a day.
 That responsiveness is the whole strategy.
 
-**Link to share everywhere:** https://trackfit.stevieweedseed.com/
+**Link to share everywhere:** the app's address (see HANDOFF.md)
 
 ---
 
@@ -54,7 +56,7 @@ That responsiveness is the whole strategy.
 > headache.
 >
 > It runs right in your phone's browser, nothing to install and no account:
-> https://trackfit.stevieweedseed.com/
+> the app's address (see HANDOFF.md)
 >
 > You tell it what track you own, measure the gap (or photograph it), and it
 > lists every combination that closes it. If nothing fits exactly, it tells
@@ -76,7 +78,7 @@ question.
 
 > If anyone here is looking for a free one that runs on a phone: I built a
 > little track-fitting tool called Trackfit
-> (https://trackfit.stevieweedseed.com/). You enter the track you own and a
+> (the app's address (see HANDOFF.md)). You enter the track you own and a
 > gap, and it gives you every combination that closes it, or the one piece
 > you would need if nothing fits exactly. No install, no account. I made it
 > for a friend and put it out free, sharing in case it helps someone here.
@@ -104,7 +106,7 @@ sub's self-promo rule (or DM a mod) before posting. Best order:
 > turned out useful enough that I figured I would share it.
 >
 > It runs in your phone's browser, nothing to install and no account:
-> https://trackfit.stevieweedseed.com/
+> the app's address (see HANDOFF.md)
 >
 > Tell it what track you own, measure the gap (or snap a photo), and it lists
 > every combination that fits. When nothing fits exactly it tells you the

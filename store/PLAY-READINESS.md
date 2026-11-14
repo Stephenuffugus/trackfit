@@ -16,8 +16,8 @@
 
 ## Not done (needs his decisions or a deploy)
 
-1. **Domain.** The app is served at `trackfit.stevieweedseed.com` (the old
-   parent company's name). A Trusted Web Activity shows its origin when
+1. **Domain.** The app is still served on the old parent company's
+   domain. A Trusted Web Activity shows its origin when
    verification fails, and the installed app is tied to that origin. Move
    the domain first (steps in HANDOFF.md), then build the Android wrapper
    against the new origin.

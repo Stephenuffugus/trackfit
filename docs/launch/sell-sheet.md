@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit — one-page sell sheet
 
 *Two audiences on this page: hobbyists (the product) and potential
@@ -10,7 +12,7 @@ dataset licensees (the B2B angle). Keep both claim-safe.*
 **Photograph the gap. Get every combination that fits — or the one piece
 you're missing.** Mobile-first, installable, nothing to learn.
 
-**https://trackfit.stevieweedseed.com/**
+**the app's address (see HANDOFF.md)**
 
 ### The problem it solves
 

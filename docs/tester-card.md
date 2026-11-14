@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit — first look
 
 Thanks for being our first tester. Trackfit is a tool for the most
@@ -16,7 +18,7 @@ not yours.
 
 On your phone or tablet, open the browser and go to:
 
-> **trackfit.stevieweedseed.com**
+> **the app's address (see HANDOFF.md)**
 
 (There's no login. No account to make. No email asked for.)
 
@@ -30,10 +32,10 @@ home screen so you don't have to find the bookmark next time.
 
 ### 1. Pick a track system
 
-You'll see a row of chips at the top — Lionel FasTrack, Atlas HO Code
-83, Kato Unitrack, and a dozen more. Tap whichever matches what's
-actually in your box. The inventory list fills with every piece that
-system makes.
+At the top, under "Which track do you have?", open the list and choose
+your brand (Lionel FasTrack, Atlas HO Code 83, Kato Unitrack and a dozen
+more). The inventory list fills with every piece that system makes, one
+of each. Then, under Step 3, tap "Show loops I can build".
 
 ### 2. Edit your inventory
 

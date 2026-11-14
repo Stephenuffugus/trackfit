@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026:** Trackfit is now free (no Founder licence, no photo ID) and is moving to a Sky Wolf Studio address. Kept as history; see HANDOFF.md for what is current.
+
 # Trackfit changelog
 
 Per handoff §11. This is not marketing copy — it's a forensic record of
@@ -521,7 +523,7 @@ Foundation port from v0.2 single-file HTML to monorepo + React PWA.
 
 - Vite + React + TS + Tailwind + Vitest. PWA manifest + service
   worker. Lighthouse PWA score ≥ 90.
-- Custom domain wired at trackfit.stevieweedseed.com.
+- Custom domain wired at the app's address (see HANDOFF.md).
 - `packages/solver` — pure TS, v0.2 subset-sum bit-for-bit identical
   on the straight path. New 2D curve solver (see
   `docs/curve-solver-design.md`).
