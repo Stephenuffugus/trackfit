@@ -20,13 +20,16 @@ against the app on the `perfect-nov14` branch.
     Got a box of sectional track and not sure what it will make?
 
     Tell Trackfit which track you have and how many of each piece. It shows
-    the complete loops you can build today from your own box, circles and
-    ovals, each one drawn piece by piece, with the list of pieces to take
-    out and the table space it needs. Give it the size of your table and it
-    only shows loops that fit.
+    the complete loops you can build today from your own box: circles,
+    ovals, rounded rectangles, and figure eights if you own a crossing.
+    Each one is drawn piece by piece, with the table space it needs, the
+    pieces to take out, the order to lay them, and what is left in the box
+    afterwards. The answer that uses the most of your track comes first,
+    and it can suggest a second loop from what is left over. Give it the
+    size of your table and it only shows loops that fit.
 
-    Every loop it shows really closes: one brand, one curve size, two
-    matching straight sides, and never more of a piece than you own.
+    Every loop it shows really closes: one brand, one rail material, one
+    curve size, and never more of a piece than you own.
 
     Short of a loop? It tells you how far short you are ("you are 30
     degrees short of a full circle").
@@ -56,13 +59,14 @@ against the app on the `perfect-nov14` branch.
 
     Trackfit is a Sky Wolf Studio tool.
 
-(about 1,600 characters; limit 4,000.)
+(about 1,900 characters; limit 4,000.)
 
 ## What to leave out (and why)
 
-- Do not claim layouts with turnouts, sidings or figure eights. The exact
-  planner does circles and ovals only; the "More layout ideas" guide is a
-  rough guide from totals.
+- Do not claim layouts with turnouts, sidings, dogbones or kidneys. The
+  exact planner does circles, ovals, rounded rectangles and figure eights
+  (through a crossing whose angle and length are in the catalogue); the
+  "More layout ideas" guide is a rough guide from totals.
 - Do not say the catalogue data is verified. It is marked
   `unverified-draft` in the library (sizes are worked out from the makers'
   stated inches and millimetres; part numbers were not checked online).
@@ -99,12 +103,12 @@ against the app on the `perfect-nov14` branch.
 
 | File | Size | Made from |
 |---|---|---|
-| `screenshots/01-loops-you-can-build.png` | 1082 x 1922 | the real app, Kato Unitrack N box, first loop |
+| `screenshots/01-loops-you-can-build.png` | 1082 x 1922 | the real app, Kato Unitrack N box, the loop that uses the most of it |
 | `screenshots/02-your-track.png` | 1082 x 1922 | brand picker with Kato Unitrack N chosen |
 | `screenshots/03-counts.png` | 1082 x 1922 | "I own" filter, counts entered |
 | `screenshots/04-fits-your-table.png` | 1082 x 1922 | table size 1300 x 800 mm, the loop that fits |
 | `screenshots/05-fill-a-gap.png` | 1082 x 1922 | a 434 mm gap, two exact fits |
-| `screenshots/06-welcome.png` | 1082 x 1922 | first welcome card |
+| `screenshots/06-figure-eight.png` | 1082 x 1922 | Peco Setrack box with a 90° crossing, the figure eight |
 | `feature-graphic-1024x500.png` | 1024 x 500 | the app's own loop drawing (SVG copied from the page) and its fonts |
 | `icon-512.png` | 512 x 512 | `apps/web/public/icon.svg`, an oval drawn the way the app draws loops |
 

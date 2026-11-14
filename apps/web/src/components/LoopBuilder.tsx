@@ -349,8 +349,24 @@ export function LoopDrawing({ plan, size = 320 }: { plan: LoopPlan; size?: numbe
       paths.push({ d: `M${s.x0} ${-s.y0} L${s.x1} ${-s.y1}`, kind: "crossing" });
     }
   }
+  // A figure eight is traced from its crossing, so it comes out at an
+  // angle. Turn the drawing so its long axis lies along the page, the way
+  // its table size is measured.
+  let theta = 0;
+  if (plan.shape === "figure-eight" && pts.length) {
+    const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+    const my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (const [x, y] of pts) { sxx += (x - mx) ** 2; syy += (y - my) ** 2; sxy += (x - mx) * (y - my); }
+    theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  }
+  const rot = (x: number, y: number): [number, number] => [
+    x * Math.cos(theta) + y * Math.sin(theta),
+    -x * Math.sin(theta) + y * Math.cos(theta),
+  ];
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const [x, y] of pts) {
+  for (const [x0, y0] of pts) {
+    const [x, y] = rot(x0, y0);
     minX = Math.min(minX, x); maxX = Math.max(maxX, x);
     minY = Math.min(minY, -y); maxY = Math.max(maxY, -y);
   }
@@ -375,6 +391,7 @@ export function LoopDrawing({ plan, size = 320 }: { plan: LoopPlan; size?: numbe
   return (
     <svg className="loop-drawing" viewBox={vb} width="100%" style={{ maxHeight: size }} role="img"
       aria-label={`Drawing of the ${plan.shape.replace("-", " ")} with ${plan.total_pieces} pieces`}>
+      <g transform={`rotate(${(theta * 180) / Math.PI})`}>
       {paths.map((p, i) => (
         <path key={i} d={p.d} fill="none" strokeLinecap="butt"
           className={p.kind === "curve" ? "loop-drawing__curve" : p.kind === "crossing" ? "loop-drawing__crossing" : "loop-drawing__straight"}
@@ -383,6 +400,7 @@ export function LoopDrawing({ plan, size = 320 }: { plan: LoopPlan; size?: numbe
       {ticks.map((d, i) => (
         <path key={`t${i}`} d={d} className="loop-drawing__tick" strokeWidth={stroke * 0.22} />
       ))}
+      </g>
     </svg>
   );
 }

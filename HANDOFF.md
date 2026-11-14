@@ -112,28 +112,19 @@ After:
 
 ## Bugs left (written down, not fixed)
 
-- **Atlas O True-Track:** its four curves have no sweep angle in the
-  library, so they are dropped and no loop can be planned.
-- **Flex track:** Peco Streamline is flex-only, so it gets the "needs
-  sectional curves" message.
-- **Loop shapes:** the exact planner does circles and ovals only. No
-  sidings, figure eights or double ovals. The rough guide still works from
-  totals.
-- **Big boxes:** above 24 straight pieces the oval search switches to a
-  fast method that can miss the very longest oval in rare mixes. Every
-  answer still closes.
-- **"I own" filter:** a row disappears the moment its count reaches 0 while
-  you are editing it.
-- **Mixed rail:** the gap filler mixes nickel silver and steel rail in one
-  run. Bachmann's own notes say not to mix them electrically.
-- **Undo toast:** it covers the bottom of the screen for about 5 seconds.
-- **`deploy.yml` (needs the workflow scope, which this box's login lacks):**
-  it still passes the dead `VITE_PREMIUM_*` and photo-ID secrets. No code
-  reads them now, so this is harmless but untidy. The ready patch is in
-  `docs/handoff/deploy-yml-cleanup.patch`. Delete those repo secrets too.
-- **Stale docs:** `docs/launch/*` (forum posts, sell sheet, founder story),
-  `README.md` and `docs/tester-card.md` still sell the Founder licence
-  and/or name the old domain.
+- Atlas O True-Track: its four curves have no sweep angle in the library,
+  so they are dropped and no loop can be planned for Atlas O.
+- Several crossings have no length or angle in the library (Atlas, Peco
+  Streamline, Bachmann's 90°), so no figure eight is offered through them.
+  The app says which piece and why.
+- `deploy.yml` still passes the dead `VITE_PREMIUM_*` and photo-ID
+  secrets. Harmless, because no code reads them, but this login cannot
+  edit workflows. The patch is ready: `docs/handoff/deploy-yml-cleanup.patch`.
+  Delete those repo secrets too.
+- The big-box oval search is bounded, not exact (see round two, item 5).
+- Fixed in round two: the "I own" row that vanished, the undo toast
+  covering the page, mixed steel and nickel silver, the message for flex
+  track, and the stale docs.
 
 ## His calls
 
@@ -189,6 +180,84 @@ GitHub Pages serves this repo; `apps/web/public/CNAME` names the domain.
    (gear menu) first, then "Import" on the new address. If you can keep the
    old domain, point it at a one-page redirect instead.
 5. Then the Play wrapper: `store/PLAY-READINESS.md`.
+
+
+## Round two (14 Nov 2026, same day)
+
+What changed:
+1. **Use the most of the box.** Answers are ranked by how much track they
+   lay. The top one is marked "Uses the most of your box". Every answer
+   lists what is left in the box afterwards.
+2. **More shapes, each one proven to close.**
+   - Rounded rectangles: four identical 90° corners, opposite sides
+     equal. They are kept only when the short side is at least 30% of the
+     long side; anything thinner is just an oval drawn badly.
+   - Figure eights through one crossing. For a crossing of angle c, the
+     two loops are (360 − c)° each, bending opposite ways, and the four
+     straight legs are R·tan(c/2) − crossing/2. Offered only when the
+     crossing's angle and length are in the catalogue and the legs come
+     out exact. Otherwise the reason is shown, for example: "needs four
+     straight runs of 330 mm each … your straights do not make that
+     exactly".
+   - Dogbones and kidneys are not offered. They need bends the other way,
+     and those close only for lengths sectional sets rarely give exactly.
+     The reason is written at the top of `packages/solver/src/loops.ts`.
+3. **A second loop.** "What else could I build with what is left?" finds
+   a second loop from the leftovers. Across all 16 catalogues (20 of each
+   curve) it takes under 120 ms. The first search takes up to 0.7 s.
+4. **One rail material per answer**, in both the loops and the gap
+   filler: steel and nickel silver are never mixed. When an exact gap fit
+   exists only by mixing them, the app says so.
+5. **Bugs fixed:**
+   - "I own" keeps a row on screen when its count reaches 0.
+   - The undo toast is a slim bar that goes away when you scroll.
+   - Flex-only lists get their own plain message.
+   - The fast oval search on big boxes (over 24 straights) now always
+     tries splitting every pair down the middle. With no table limit, the
+     side it finds is at most half the length of the odd pieces short of
+     the longest possible (tested).
+6. **Stale docs:** README, tester card, launch docs and the old release
+   notes have a one-line SUPERSEDED note at the top, and the old address
+   and name are removed from them. They remain only in
+   `apps/web/public/CNAME` (his domain call) and one comment in
+   `deploy.yml` (this login cannot edit workflows).
+7. **The measuring tool is real.** You mark two points on a coin, bill or
+   track piece of known size, then two points on the gap. The gap length
+   is the ratio of the two distances (`packages/measure/src/compute.ts`).
+   Nothing in it is invented. It does not correct for a photo taken at an
+   angle.
+
+New tests (solver cases 38 → 52 since round one; web unchanged):
+- rectangle and figure eight close exactly (end meets start, heading
+  returns);
+- known answers: 12 × 30° curves with 8 × 9" make 18" × 18" sides; an
+  18" eight with a 6" 90° crossing needs 15" legs;
+- leftovers + used = owned;
+- the second loop stays within the leftovers;
+- random boxes with crossings;
+- the material split;
+- the flex message;
+- the big-box bound;
+- squarer rectangles.
+
+Looked at, at 412 x 915: top plan with the badge, leftovers, the second
+loop, a rounded rectangle, "I own" keeping a row at 0, the
+mixed-material note, a figure eight and its laying order, the flex
+message. Shots are in `/tmp/trackfit-shots/round2/` (gone when the box
+stops).
+
+Fixed after looking:
+- The first rectangle was 57" × 3" (a stub). It is now squarer and ties
+  go to the simpler shape.
+- The figure eight was drawn at 45°. It is now turned to lie along its
+  table size.
+
+Not verified in round two: a real phone, a real printer, and speed on a
+phone (only Node and headless Chrome on this box).
+
+New call of his: none. Dogbones and kidneys stay out unless he wants a
+looser planner that also offers loops which "nearly close" (honestly
+labelled). That would be a decision for him.
 
 ## The single command that ships it (for HIM to run)
 

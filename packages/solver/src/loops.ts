@@ -449,8 +449,12 @@ export function findLoops(pieces: LoopPiece[], opts: LoopOptions = {}): LoopResu
       if (corner && nonZero.length) {
         const capB = Math.floor(Math.min(1e9, (maxD - 2 * R) * TENTH));
         let best: { A: (typeof ok)[number]; B: (typeof ok)[number] } | null = null;
-        // Try the longest few long sides; fill the short sides from what is left.
-        for (const A of nonZero.slice(0, 12)) {
+        // Try long sides across the whole range (not only the longest, which
+        // leaves a stub of a short side); fill the short sides from what is
+        // left. Keep the one laying the most track, then the squarest.
+        const step = Math.max(1, Math.floor(nonZero.length / 24));
+        const candidates = nonZero.filter((_, i) => i % step === 0).slice(0, 30);
+        for (const A of candidates) {
           const rest = sQty.map((q, i) => q - A.pa[i]! - A.pb[i]!);
           const restCopies = rest.reduce((x, y) => x + y, 0);
           const bl =
@@ -458,22 +462,31 @@ export function findLoops(pieces: LoopPiece[], opts: LoopOptions = {}): LoopResu
               ? [...pairStates(sUnits, rest, Math.min(capB, A.b), maxStates).values()]
               : symmetricStates(sUnits, rest, Math.min(capB, A.b), tol);
           const B = bl.filter((s) => s.a - s.b <= tol && s.b > 0).sort((x, y) => y.b - x.b)[0];
-          if (B && (!best || A.b + B.b > best.A.b + best.B.b)) best = { A, B };
+          if (!B) continue;
+          const tot = A.b + B.b;
+          const bestTot = best ? best.A.b + best.B.b : -1;
+          if (
+            !best ||
+            tot > bestTot + tol ||
+            (Math.abs(tot - bestTot) <= tol && Math.min(A.b, B.b) > Math.min(best.A.b, best.B.b))
+          )
+            best = { A, B };
         }
-        if (best) {
+        // A rectangle whose short side is a stub is just an oval drawn badly.
+        if (best && Math.min(best.A.b, best.B.b) >= 0.3 * Math.max(best.A.b, best.B.b)) {
           const a = Math.max(best.A.a, best.A.b) / TENTH;
           const b = Math.max(best.B.a, best.B.b) / TENTH;
           plans.push(
             make(
               "rectangle",
               [
-                { name: "First long side", run: expand(straights, best.A.pa) },
+                { name: "Side 1", run: expand(straights, best.A.pa) },
                 { name: "Corner (curves)", run: curveRun(corner) },
-                { name: "First short side", run: expand(straights, best.B.pa) },
+                { name: "Side 2", run: expand(straights, best.B.pa) },
                 { name: "Corner (curves)", run: curveRun(corner) },
-                { name: "Second long side", run: expand(straights, best.A.pb) },
+                { name: "Side 3 (same as side 1)", run: expand(straights, best.A.pb) },
                 { name: "Corner (curves)", run: curveRun(corner) },
-                { name: "Second short side", run: expand(straights, best.B.pb) },
+                { name: "Side 4 (same as side 2)", run: expand(straights, best.B.pb) },
                 { name: "Corner (curves)", run: curveRun(corner) },
               ],
               R, a, b, a + 2 * R, b + 2 * R,
@@ -539,7 +552,14 @@ export function findLoops(pieces: LoopPiece[], opts: LoopOptions = {}): LoopResu
 
   if (plans.length) {
     // Most track laid first: the answer that uses the most of the box.
-    plans.sort((a, b) => b.run_mm - a.run_mm || b.total_pieces - a.total_pieces);
+    // Ties go to the simpler shape (oval before rectangle before eight).
+    const order: Record<LoopShape, number> = { oval: 0, circle: 0, rectangle: 1, "figure-eight": 2 };
+    plans.sort(
+      (a, b) =>
+        (Math.abs(b.run_mm - a.run_mm) > 1 ? b.run_mm - a.run_mm : 0) ||
+        order[a.shape] - order[b.shape] ||
+        b.total_pieces - a.total_pieces,
+    );
     plans[0]!.uses_most = true;
     const hasEight = plans.some((p) => p.shape === "figure-eight");
     return { plans: plans.slice(0, 10), figureEightNote: hasEight ? undefined : figureEightNote };

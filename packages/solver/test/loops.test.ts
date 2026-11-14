@@ -271,3 +271,14 @@ describe("big boxes (fast search)", () => {
     withinInventory(oval, inv);
   });
 });
+
+describe("rectangles are real rectangles", () => {
+  it("prefers a squarer rectangle to a long one with stub ends", () => {
+    const inv = [ezCurve(12), ezStraight(9, 10), ezStraight(6, 4), ezStraight(3, 3)];
+    const rect = findLoops(inv).plans.find((p) => p.shape === "rectangle");
+    expect(rect).toBeTruthy();
+    expect(rect!.side2_mm!).toBeGreaterThanOrEqual(0.3 * rect!.side_mm);
+    closes(rect!);
+    withinInventory(rect!, inv);
+  });
+});
