@@ -172,10 +172,11 @@ function LoopCard({
   printing: boolean;
   onPrint: () => void;
 }) {
+  const curveSize = `${formatLength(plan.radius_mm, unit)}${unit === "in" ? '"' : " mm"} radius curves`;
   const title =
     plan.shape === "circle"
-      ? "Circle"
-      : `Oval, ${formatLength(plan.side_mm, unit)}${unitSuffix(unit)} straight sides`;
+      ? `Circle of ${curveSize}`
+      : `Oval: ${formatLength(plan.side_mm, unit)}${unit === "in" ? '"' : " mm"} sides, ${curveSize}`;
   return (
     <li className={`card loop-card${printing ? " print-me" : ""}`}>
       <h3 className="loop-card__title">{title}</h3>

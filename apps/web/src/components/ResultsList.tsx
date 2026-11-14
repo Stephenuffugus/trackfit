@@ -92,8 +92,9 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
     return (
       <section className="results" id="results">
         <p className="label">
-          {solutions.length} solution
-          {solutions.length === 1 ? "" : "s"} · solved in {elapsed}ms
+          {solutions.length === 1
+            ? "1 way to fill the gap"
+            : `${solutions.length} ways to fill the gap`}
         </p>
         {solutions.map((sol, i) => (
           <ResultCard

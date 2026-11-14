@@ -1,6 +1,6 @@
 import type { TrackKind } from "@trackfit/library";
 
-export type InventoryFilter = "all" | "straight" | "curve" | "turnout" | "crossing";
+export type InventoryFilter = "all" | "owned" | "straight" | "curve" | "turnout" | "crossing";
 
 interface Props {
   active: InventoryFilter;
@@ -10,6 +10,7 @@ interface Props {
 
 const FILTERS: { id: InventoryFilter; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "owned", label: "I own" },
   { id: "straight", label: "Straights" },
   { id: "curve", label: "Curves" },
   { id: "turnout", label: "Turnouts" },

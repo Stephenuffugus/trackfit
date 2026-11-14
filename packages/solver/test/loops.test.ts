@@ -69,7 +69,7 @@ describe("findLoops", () => {
   it("no curves at all is explained", () => {
     const r = findLoops([ezStraight(9, 10)]);
     expect(r.plans).toEqual([]);
-    expect(r.reason).toMatch(/curved pieces/);
+    expect(r.reason).toMatch(/sectional curves/);
   });
 
   it("never joins pieces from two systems", () => {

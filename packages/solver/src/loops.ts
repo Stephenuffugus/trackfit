@@ -337,8 +337,9 @@ export function findLoops(pieces: LoopPiece[], opts: LoopOptions = {}): LoopResu
   if (bestCurveDeg === 0) {
     return {
       plans: [],
-      reason: "A loop needs curved pieces, and your box has none yet.",
-      nearest: "Add your curves (tap a brand above to load its pieces, then set how many you own).",
+      reason: "A loop needs sectional curves, and your list has none with a count above 0.",
+      nearest:
+        "Set how many curves you own in step 2. (Flex track bends to any curve, but Trackfit plans loops from sectional curves only.)",
     };
   }
   if (tooBig) {

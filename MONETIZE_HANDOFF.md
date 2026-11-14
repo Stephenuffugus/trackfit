@@ -1,3 +1,5 @@
+> **SUPERSEDED 14 Nov 2026.** Trackfit is free: the paid tier, the Founder licence and photo ID were removed (branch `perfect-nov14`, see HANDOFF.md). Do not re-open the freemium plan from this file.
+
 # Trackfit — Monetization & Showcase Handoff
 
 **For: another Claude instance helping the owner (Stephen) figure out how to make money from this project or showcase the work.**

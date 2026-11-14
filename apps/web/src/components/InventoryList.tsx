@@ -111,6 +111,7 @@ export function InventoryList({
   const counts = useMemo(() => {
     const c: Record<InventoryFilter, number> = {
       all: rows.length,
+      owned: rows.filter((r) => r.qty > 0).length,
       straight: 0,
       curve: 0,
       turnout: 0,
@@ -125,7 +126,11 @@ export function InventoryList({
   const visible = useMemo(() => {
     return rows
       .map((row, idx) => ({ row, idx }))
-      .filter(({ row }) => filter === "all" || bucketOf(row.kind) === filter);
+      .filter(
+        ({ row }) =>
+          filter === "all" ||
+          (filter === "owned" ? row.qty > 0 : bucketOf(row.kind) === filter),
+      );
   }, [rows, filter]);
 
   // Group the visible rows into the five accordion buckets.
@@ -286,7 +291,9 @@ export function InventoryList({
             </div>
           ) : (
             <div className="inv-empty-filter">
-              No {filter === "all" ? "pieces" : filter + "s"} in your box yet.
+              {filter === "owned"
+                ? "Nothing has a count above 0 yet."
+                : `No ${filter === "all" ? "pieces" : filter + "s"} in your box yet.`}
             </div>
           )
         ) : (
