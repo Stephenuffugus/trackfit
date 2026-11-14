@@ -145,11 +145,24 @@ After:
    - full-size printable templates.
 
    Photo ID must not come back until it is real.
-2. **What paid customers are owed.** 25 Founder licences were issued in May.
-   Now that everything is free, do those buyers get a note?
-3. **The Cloudflare worker.** Check dash.cloudflare.com for a worker named
-   `trackfit-vision` holding an Anthropic key. If it was ever deployed it
-   can still be billed.
+2. **The 25 Founder keys.** The repo shows only that 25 keys exist: commit
+   478a892 (29 May) added 25 SHA-256 hashes to the activation allowlist,
+   `apps/web/src/lib/premium.ts:97` on main, with the comment "Founder
+   batch 1 (25 codes) issued for Payhip auto-delivery". Its own message
+   says "Not yet live until VITE_PREMIUM_ENABLED is deployed". Nothing in
+   the repo shows any key was sold or handed out. The August review says
+   the paid base was zero (`TRACKFIT-DECISION.md:63-64` in SWS-apps). Only
+   his Payhip dashboard can say whether anyone bought one. If nobody did,
+   there is nobody to tell.
+3. **A possible Cloudflare worker.** The repo has the code and the setup
+   guide for a worker named `trackfit-vision`:
+   `infra/cloudflare-worker/wrangler.toml:6`, deployed by hand following
+   `docs/SETUP-PHOTO-ID.md`, which says to add an `ANTHROPIC_API_KEY`
+   secret. Nothing in the repo shows it was ever deployed. The August
+   review found the photo-ID proxy URL unset in the live bundle
+   (`TRACKFIT-DECISION.md:79`), so the live app never called it. Whether
+   a worker exists in his Cloudflare account can only be checked at
+   dash.cloudflare.com. If one does, delete it, or at least remove its key.
 4. **Name.** The listing title is drafted as "Trackfit: Model Track Planner".
 5. **Support email.** I used stephen@skywolfstudio.com, taken from the
    studio's other apps.
