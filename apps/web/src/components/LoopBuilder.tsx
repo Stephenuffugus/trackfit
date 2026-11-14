@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { findLoops, tracePlan, type LoopPlan, type LoopResult } from "@trackfit/solver";
 import { listSystems } from "@trackfit/library";
 import type { InventoryRow, Unit } from "../lib/types";
@@ -31,6 +31,12 @@ export function LoopBuilder({ inventory, unit }: Props) {
   const [tableD, setTableD] = useState("");
   const [result, setResult] = useState<LoopResult | null>(null);
   const [printing, setPrinting] = useState<number | null>(null);
+  const [working, setWorking] = useState(false);
+
+  // An answer for yesterday's box is a wrong answer: clear it on any edit.
+  useEffect(() => {
+    setResult(null);
+  }, [inventory]);
 
   const systemNames = useMemo(() => {
     const m = new Map<string, string>();
@@ -55,12 +61,17 @@ export function LoopBuilder({ inventory, unit }: Props) {
         qty: r.qty,
         system_id: r.system_id,
       }));
-    setResult(
-      findLoops(pieces, {
-        maxWidthMm: w && w.mm > 0 ? w.mm - margin : undefined,
-        maxDepthMm: d && d.mm > 0 ? d.mm - margin : undefined,
-      }),
-    );
+    setWorking(true);
+    // Let the button repaint as "Working" before the search runs.
+    window.setTimeout(() => {
+      setResult(
+        findLoops(pieces, {
+          maxWidthMm: w && w.mm > 0 ? w.mm - margin : undefined,
+          maxDepthMm: d && d.mm > 0 ? d.mm - margin : undefined,
+        }),
+      );
+      setWorking(false);
+    }, 30);
   };
 
   const printPlan = (i: number) => {
@@ -114,8 +125,8 @@ export function LoopBuilder({ inventory, unit }: Props) {
             <span className="loop-builder__unit">{unit === "in" ? "inches" : "mm"}</span>
           </div>
         </div>
-        <button type="button" className="solve loop-builder__go" onClick={run} disabled={empty}>
-          Show loops I can build →
+        <button type="button" className="solve loop-builder__go" onClick={run} disabled={empty || working}>
+          {working ? "Working…" : "Show loops I can build →"}
         </button>
         {empty ? (
           <p className="loop-builder__hint">Add your track above first.</p>

@@ -98,6 +98,76 @@ export function InventoryRow({
     onChange(idx, "qty", String(stepQty(currentQty, "inc")));
   };
 
+  const qtyCell = (
+    <div className="inv-qty-cell" data-field="qty">
+      <button
+        type="button"
+        className="qty-stepper"
+        aria-label={`One fewer ${row.label}`}
+        aria-disabled={decDisabled || undefined}
+        disabled={decDisabled}
+        onClick={handleDec}
+      >
+        −
+      </button>
+      <input
+        type="number"
+        step={1}
+        min={0}
+        inputMode="numeric"
+        className="qty-input"
+        value={row.qty}
+        onChange={(e) => onChange(idx, "qty", e.target.value)}
+        onFocus={(e) => e.target.select()}
+        aria-label={`Quantity of ${row.label}`}
+      />
+      <button
+        type="button"
+        className="qty-stepper"
+        aria-label={`One more ${row.label}`}
+        onClick={handleInc}
+      >
+        +
+      </button>
+    </div>
+  );
+
+  // Catalogue pieces: the name already says the size, so the row is just
+  // the name and how many you own. Two short lines instead of four.
+  if (row.system_id && getSystem(row.system_id)) {
+    let detail: string | null = null;
+    if (isCurve && row.radius_mm && row.arc_degrees) {
+      detail = `${formatLength(row.radius_mm, unit)}${unit === "in" ? '"' : " mm"} radius, ${row.arc_degrees}°`;
+    } else if (isTurnout || isCrossing) {
+      detail = subscript;
+    }
+    return (
+      <div
+        className={`inv-row inv-row--catalog${row.qty > 0 ? " inv-row--owned" : ""}`}
+        data-kind={kind ?? "unknown"}
+      >
+        <div className="inv-cat-name">
+          <span className="inv-cat-label">{row.label}</span>
+          <span className="inv-cat-detail">
+            {brandLabel}
+            {detail ? ` · ${detail}` : ""}
+          </span>
+        </div>
+        {qtyCell}
+        <button
+          type="button"
+          className="icon-btn"
+          data-action="delete"
+          title="Remove"
+          aria-label={`Remove ${row.label} from the list`}
+          onClick={() => onDelete(idx)}
+        >
+          ×
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="inv-row" data-kind={kind ?? "unknown"}>
       <PhotoButton
@@ -154,36 +224,7 @@ export function InventoryRow({
           />
         )}
       </div>
-      <div className="inv-qty-cell" data-field="qty">
-        <button
-          type="button"
-          className="qty-stepper"
-          aria-label="Decrease quantity"
-          aria-disabled={decDisabled || undefined}
-          disabled={decDisabled}
-          onClick={handleDec}
-        >
-          −
-        </button>
-        <input
-          type="number"
-          step={1}
-          min={0}
-          inputMode="numeric"
-          className="qty-input"
-          value={row.qty}
-          onChange={(e) => onChange(idx, "qty", e.target.value)}
-          aria-label={`Quantity of ${row.label}`}
-        />
-        <button
-          type="button"
-          className="qty-stepper"
-          aria-label="Increase quantity"
-          onClick={handleInc}
-        >
-          +
-        </button>
-      </div>
+      {qtyCell}
       <button
         type="button"
         className="icon-btn"

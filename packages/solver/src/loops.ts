@@ -84,40 +84,130 @@ function pairStates(
   // Remaining capacity after type i, for pruning |a-b|.
   const restAfter: number[] = new Array(n + 1).fill(0);
   for (let i = n - 1; i >= 0; i--) restAfter[i] = restAfter[i + 1]! + units[i]! * qtys[i]!;
+  // One copy at a time: each copy goes to side A, side B, or stays in the
+  // box. Equal (lo, hi) totals are merged, which keeps the search small.
   for (let i = 0; i < n; i++) {
     const u = units[i]!;
-    const q = qtys[i]!;
-    const next = new Map<string, { a: number; b: number; pa: Pick; pb: Pick }>();
-    for (const s of states.values()) {
-      for (let x = 0; x <= q; x++) {
-        const a = s.a + x * u;
-        if (a > capA) break;
-        for (let y = 0; x + y <= q; y++) {
-          const b = s.b + y * u;
-          if (b > capA) break;
-          // Keep a >= b - (rest) feasible: the gap must be closable.
-          // Prune: the gap between the sides must still be closable.
-          if (Math.abs(a - b) > restAfter[i + 1]!) continue;
+    for (let c = 0; c < qtys[i]!; c++) {
+      const rest = restAfter[i + 1]! + u * (qtys[i]! - c - 1);
+      const next = new Map(states);
+      for (const s of states.values()) {
+        for (const side of [0, 1]) {
+          const a = s.a + (side === 0 ? u : 0);
+          const b = s.b + (side === 1 ? u : 0);
+          if (a > capA || b > capA) continue;
+          if (Math.abs(a - b) > rest) continue;
           const lo = Math.min(a, b);
           const hi = Math.max(a, b);
           const key = lo + "," + hi;
           if (next.has(key)) continue;
           const pa = s.pa.slice();
           const pb = s.pb.slice();
-          pa[i] = x;
-          pb[i] = y;
-          // Canonical: a is the larger side.
+          if (side === 0) pa[i]!++;
+          else pb[i]!++;
           next.set(key, a >= b ? { a, b, pa, pb } : { a: b, b: a, pa: pb, pb: pa });
           if (next.size > maxStates) break;
         }
         if (next.size > maxStates) break;
       }
-      if (next.size > maxStates) break;
+      // Drop states that can no longer close (the gap only shrinks by
+      // pieces still to come).
+      for (const [k, s] of next) if (s.a - s.b > rest) next.delete(k);
+      states = next;
     }
-    states = next;
   }
   return states;
 }
+
+/**
+ * Large boxes: the exact pair search grows too fast, so build the two sides
+ * from matching halves (the same pieces on both sides, which always
+ * matches) and let the odd pieces left over make up a small extra on each
+ * side when they can. Every answer is still a true closing loop; only the
+ * very longest possible side may be missed in rare mixes.
+ */
+function symmetricStates(
+  units: number[],
+  qtys: number[],
+  capA: number,
+  tol: number,
+): { a: number; b: number; pa: Pick; pb: Pick }[] {
+  const n = units.length;
+  const halves = qtys.map((q) => Math.floor(q / 2));
+  // 0/1 knapsack over half copies, sums in the same units, parent pointers.
+  const parent = new Map<number, number>(); // sum -> type index used to reach it
+  parent.set(0, -1);
+  let sums = [0];
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < halves[i]!; c++) {
+      const add: number[] = [];
+      for (const s of sums) {
+        const t = s + units[i]!;
+        if (t > capA || parent.has(t)) continue;
+        parent.set(t, i);
+        add.push(t);
+      }
+      sums = sums.concat(add);
+      if (sums.length > 50000) break;
+    }
+  }
+  const pickOf = (sum: number): Pick => {
+    const p: Pick = new Array(n).fill(0);
+    let s = sum;
+    while (s > 0) {
+      const i = parent.get(s)!;
+      p[i]!++;
+      s -= units[i]!;
+    }
+    return p;
+  };
+  // Odd copies left over: a small exact pair search on them.
+  const oddQty = qtys.map((q, i) => q - 2 * halves[i]!);
+  const extras = [...pairStates(units, oddQty, capA, 5000).values()].filter(
+    (e) => e.a - e.b <= tol,
+  );
+  const out: { a: number; b: number; pa: Pick; pb: Pick }[] = [];
+  const sorted = [...parent.keys()].sort((x, y) => x - y);
+  const pickSym = (limit: number): number | null => {
+    // largest symmetric sum <= limit
+    let lo = 0, hi = sorted.length - 1, best: number | null = null;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (sorted[mid]! <= limit) { best = sorted[mid]!; lo = mid + 1; } else hi = mid - 1;
+    }
+    return best;
+  };
+  const seen = new Set<string>();
+  const push = (sym: number, e: { a: number; b: number; pa: Pick; pb: Pick }) => {
+    const a = sym + e.a;
+    const b = sym + e.b;
+    const key = a + "," + b;
+    if (seen.has(key) || a > capA) return;
+    seen.add(key);
+    const ps = pickOf(sym);
+    out.push({
+      a,
+      b,
+      pa: ps.map((v, i) => v + e.pa[i]!),
+      pb: ps.map((v, i) => v + e.pb[i]!),
+    });
+  };
+  for (const e of extras) {
+    const best = pickSym(capA - e.a);
+    if (best !== null) push(best, e);
+  }
+  // A spread of sizes too, so the user sees small and medium ovals.
+  for (const frac of [0.25, 0.5, 0.75]) {
+    const target = sorted[Math.floor((sorted.length - 1) * frac)];
+    if (target !== undefined) push(target, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
+  }
+  if (sorted.length > 1) push(sorted[1]!, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
+  push(0, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
+  return out;
+}
+
+/** Above this many straight pieces the exact search gives way. */
+const EXACT_LIMIT = 24;
 
 const TENTH = 10; // straight lengths in tenths of a millimetre
 const ARC_UNIT = 8; // curve sweep in eighths of a degree
@@ -128,7 +218,7 @@ function groupKey(p: LoopPiece): string {
 
 export function findLoops(pieces: LoopPiece[], opts: LoopOptions = {}): LoopResult {
   const tol = Math.round((opts.sideToleranceMm ?? 1) * TENTH);
-  const maxStates = opts.maxStates ?? 60000;
+  const maxStates = opts.maxStates ?? 20000;
   const maxW = opts.maxWidthMm ?? Infinity;
   const maxD = opts.maxDepthMm ?? Infinity;
 
@@ -187,23 +277,32 @@ export function findLoops(pieces: LoopPiece[], opts: LoopOptions = {}): LoopResu
         tooBig = true;
         continue;
       }
-      const side = pairStates(
-        straights.map((t) => Math.round(t.length_mm * TENTH)),
-        straights.map((t) => t.qty),
-        capSide,
-        maxStates,
-      );
+      const sUnits = straights.map((t) => Math.round(t.length_mm * TENTH));
+      const sQty = straights.map((t) => t.qty);
+      const copies = sQty.reduce((x, y) => x + y, 0);
+      const sideList =
+        copies <= EXACT_LIMIT
+          ? [...pairStates(sUnits, sQty, capSide, maxStates).values()]
+          : symmetricStates(sUnits, sQty, capSide, tol);
       // Equal (within tol) sides, longest first.
-      const ok = [...side.values()].filter((s) => s.a - s.b <= tol);
+      const ok = sideList.filter((s) => s.a - s.b <= tol);
       ok.sort((x, y) => y.b - x.b);
       const chosen: typeof ok = [];
       // Biggest, smallest non-zero, the circle, and one in between.
       if (ok.length) {
         const nonZero = ok.filter((s) => s.b > 0);
         const zero = ok.find((s) => s.b === 0 && s.a === 0);
-        if (nonZero[0]) chosen.push(nonZero[0]);
-        if (nonZero.length > 2) chosen.push(nonZero[Math.floor(nonZero.length / 2)]!);
-        if (nonZero.length > 1) chosen.push(nonZero[nonZero.length - 1]!);
+        // Per curve size: the biggest oval, one about half its length,
+        // and the plain circle.
+        if (nonZero[0]) {
+          chosen.push(nonZero[0]);
+          const halfLen = nonZero[0].b / 2;
+          const mid = nonZero.slice(1).reduce<(typeof ok)[number] | null>(
+            (best, x) => (!best || Math.abs(x.b - halfLen) < Math.abs(best.b - halfLen) ? x : best),
+            null,
+          );
+          if (mid && mid.b < nonZero[0].b * 0.8) chosen.push(mid);
+        }
         if (zero) chosen.push(zero);
       }
       const seen = new Set<string>();
