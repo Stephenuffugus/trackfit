@@ -176,11 +176,17 @@ function CardOne() {
       <p className="eyebrow">Welcome</p>
       <h2>What is this?</h2>
       <p className="onboarding-body">
-        Trackfit helps you fit track pieces into a layout gap. Tell it
-        what's in your box and the gap you're trying to fill — it'll
-        find combinations that work.
+        Trackfit looks at the sectional track you own and shows the
+        complete loops you can build from it, drawn piece by piece. It can
+        also find which pieces fill an awkward gap.
       </p>
-      <BlueprintBar />
+      <img
+        className="onboarding-oval"
+        src={`${import.meta.env.BASE_URL}icon.svg`}
+        alt="An oval of track: straights on the long sides, curves at the ends"
+        width={160}
+        height={160}
+      />
     </article>
   );
 }
@@ -189,118 +195,35 @@ function CardOne() {
 function CardTwo() {
   return (
     <article className="onboarding-card">
-      <p className="eyebrow">Step one</p>
-      <h2>Pick what you have</h2>
+      <p className="eyebrow">Steps 1 and 2</p>
+      <h2>Tell it your track</h2>
       <p className="onboarding-body">
-        Tap a brand to load the standard pieces, then change the
-        quantities to match your box. You can also add a piece by hand
-        if you have something unusual.
+        Choose your brand from the list. Every piece it makes appears with
+        a count of 1. Set each count to what you own. If you own only a
+        few kinds, tap <strong>All counts to 0</strong> first.
       </p>
       <p className="onboarding-body onboarding-body--hint">
-        A photo on each row is optional, but it helps when you come
-        back later and forget which piece was which.
+        Your list is kept on this phone or tablet, so it is there next time.
       </p>
     </article>
   );
 }
 
-/** Card 3 — solve flow. */
+/** Card 3 — what can I build. */
 function CardThree() {
   return (
     <article className="onboarding-card">
-      <p className="eyebrow">Step two</p>
-      <h2>Tell it your gap, get an answer</h2>
+      <p className="eyebrow">Step 3</p>
+      <h2>See what you can build</h2>
       <p className="onboarding-body">
-        Type how long the gap is. Tap{" "}
-        <strong>Find combinations</strong>. You'll get every way to
-        fill it — and if no exact fit, the precise piece you'd need.
+        Tap <strong>Show loops I can build</strong>. Each answer is drawn,
+        with the pieces to take out of the box and the table space it
+        needs. Print it and take it to the train room.
       </p>
       <p className="onboarding-body onboarding-body--hint">
-        Don't have a tape measure? Snap a photo with a quarter or
-        dollar bill in frame and tap Measure.
+        Filling a gap instead? Type its length under{" "}
+        <strong>Fill one gap</strong>.
       </p>
     </article>
-  );
-}
-
-/**
- * Simplified blueprint of the result-card bar (the stacked colored
- * segments showing how pieces add up to the target). Inline SVG so we
- * don't ship another asset.
- */
-function BlueprintBar() {
-  return (
-    <svg
-      className="onboarding-blueprint"
-      viewBox="0 0 320 92"
-      role="img"
-      aria-label="Illustration of a track-fit result"
-    >
-      {/* Outer frame */}
-      <rect
-        x="1"
-        y="1"
-        width="318"
-        height="90"
-        fill="#fdf8ee"
-        stroke="#1a2238"
-        strokeWidth="1.5"
-      />
-      {/* Hatched ground */}
-      <defs>
-        <pattern
-          id="hatch"
-          width="6"
-          height="6"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <line x1="0" y1="0" x2="0" y2="6" stroke="#1a2238" strokeWidth="0.4" />
-        </pattern>
-      </defs>
-      {/* Title */}
-      <text
-        x="14"
-        y="22"
-        fontFamily="'IBM Plex Mono', monospace"
-        fontSize="9"
-        fill="#4a5169"
-        letterSpacing="1.4"
-      >
-        TARGET 19" · EXACT FIT
-      </text>
-      {/* Bar segments */}
-      <rect x="14" y="34" width="120" height="34" fill="#b24b2b" stroke="#1a2238" />
-      <rect x="134" y="34" width="80" height="34" fill="#2e4a6b" stroke="#1a2238" />
-      <rect x="214" y="34" width="92" height="34" fill="#9a7b3f" stroke="#1a2238" />
-      {/* Labels under the bar */}
-      <text
-        x="14"
-        y="82"
-        fontFamily="'IBM Plex Mono', monospace"
-        fontSize="8"
-        fill="#4a5169"
-      >
-        10"
-      </text>
-      <text
-        x="134"
-        y="82"
-        fontFamily="'IBM Plex Mono', monospace"
-        fontSize="8"
-        fill="#4a5169"
-      >
-        5"
-      </text>
-      <text
-        x="214"
-        y="82"
-        fontFamily="'IBM Plex Mono', monospace"
-        fontSize="8"
-        fill="#4a5169"
-      >
-        4"
-      </text>
-    </svg>
   );
 }

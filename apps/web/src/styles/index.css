@@ -2665,3 +2665,9 @@ input[type="number"] {
 .inv-row--catalog:not(.inv-row--owned) .inv-cat-label { color: var(--ink-soft); font-weight: 500; }
 .qty-stepper { min-width: 48px; min-height: 48px; font-size: 22px; }
 .photo-btn:not(.lg) { width: 64px; height: 64px; }
+
+/* Bigger text: scale the whole page by 20% (the old rule moved ten
+   selectors and the promise of +25% delivered about 6%). The page
+   column is max 720px, so a phone simply gets a longer page. */
+html[data-large-text="true"] .wrap { zoom: 1.2; }
+.onboarding-oval { display: block; margin: 8px auto 0; width: 160px; height: 160px; }

@@ -1,25 +1,20 @@
 {
-  "name": "Trackfit",
+  "id": "./",
+  "name": "Trackfit: what can I build with my track?",
   "short_name": "Trackfit",
-  "description": "Sectional track combination finder for model railroaders. Tell it what's in your box and the gap you're trying to fill — get every combination that fits, exactly or close.",
+  "description": "For model railroaders. Tell it the sectional track you own; it shows the loops you can build from your own box and which pieces fill an awkward gap. Works offline, no account.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f4ede0",
   "theme_color": "#1a2238",
+  "categories": ["utilities", "lifestyle"],
   "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-maskable.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

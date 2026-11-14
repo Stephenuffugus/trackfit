@@ -232,7 +232,7 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
             <span className="settings-row__label">
               <span className="settings-row__name">Bigger text</span>
               <span className="settings-row__hint">
-                Increases body text by 25%.
+                Makes everything on the page 20% bigger.
               </span>
             </span>
             <input
@@ -388,7 +388,7 @@ export function SettingsMenu({ inventory }: SettingsMenuProps) {
               friction channel for this audience and doubles as the support
               path the launch strategy leans on (reply within a day). */}
           <a
-            href="mailto:stevieweedseed@gmail.com?subject=Trackfit%20issue%20or%20feedback"
+            href="mailto:stephen@skywolfstudio.com?subject=Trackfit%20issue%20or%20feedback"
             className="settings-row settings-row--button"
           >
             <span className="settings-row__label">

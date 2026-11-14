@@ -110,7 +110,7 @@ describe("piece-picker — dedupe and bump", () => {
   });
 
   it("findInventoryDuplicate finds geometric matches even after rename", () => {
-    const inv = [makeStraightRow("Stevie's favorite straight", 254, 4)];
+    const inv = [makeStraightRow("My favourite straight", 254, 4)];
     const incoming = makeStraightRow("10 in straight", 254, 1);
     expect(findInventoryDuplicate(inv, incoming)).toBe(0);
   });
