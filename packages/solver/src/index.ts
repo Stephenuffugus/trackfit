@@ -21,12 +21,13 @@ export type {
 
 export const IN_TO_MM = 25.4;
 
-export { findLoops, tracePlan } from "./loops.js";
+export { findLoops, tracePlan, railMaterial, crossingAngle, leftoverPieces } from "./loops.js";
 export type {
   LoopPiece,
   LoopUse,
   LoopPlan,
   LoopOptions,
   LoopResult,
+  LoopShape,
   TracedSegment,
 } from "./loops.js";

@@ -2687,3 +2687,11 @@ html[data-large-text="true"] .wrap { zoom: 1.2; }
 .loop-card__order-title { font-weight: 700; font-size: 16px; margin: 0 0 6px; }
 .loop-card__order ol { margin: 0 0 8px; padding-left: 24px; font-size: 16px; line-height: 1.45; }
 .loop-card__order li { margin-bottom: 4px; }
+.loop-drawing__crossing { stroke: var(--brass); }
+.swatch--crossing { background: var(--brass); margin-left: 8px; }
+.loop-card--most { border-width: 3px; }
+.loop-card__badge { display: inline-block; background: var(--good); color: #fff; font-weight: 700; font-size: 15px; padding: 4px 10px; margin: 0 0 10px; }
+.loop-card__parts--muted { color: var(--ink-soft); }
+.loop-card__second { width: 100%; margin: 0 0 12px; text-transform: none; letter-spacing: 0; font: 600 16px "IBM Plex Sans", sans-serif; }
+.loop-card__also { border-top: 1.5px dashed var(--rule); padding-top: 12px; margin: 0 0 12px; }
+.loop-builder__note { font-size: 16px; line-height: 1.45; margin: 14px 0 0; padding: 10px 12px; border-left: 4px solid var(--brass); background: var(--bg-elev); }
