@@ -34,6 +34,8 @@ interface Props {
   onAdd: (row?: Row) => number | null;
   onReset: () => void;
   onShowIntro: () => void;
+  /** Set every row to qty 0 (undoable). */
+  onZeroAll?: () => void;
 }
 
 /** Threshold above which the accordion auto-collapses non-recently-edited groups. */
@@ -78,6 +80,7 @@ export function InventoryList({
   onAdd,
   onReset,
   onShowIntro,
+  onZeroAll,
 }: Props) {
   const [filter, setFilter] = useState<InventoryFilter>("all");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -214,7 +217,7 @@ export function InventoryList({
   return (
     <section className="app-section">
       <div className="label-row">
-        <p className="label">What's in your box</p>
+        <p className="label">Step 2 · How many of each</p>
         <div className="text-actions">
           <button
             type="button"
@@ -222,8 +225,18 @@ export function InventoryList({
             title="Replay the welcome cards"
             onClick={onShowIntro}
           >
-            Show intro again
+            Help
           </button>
+          {rows.length > 0 && onZeroAll ? (
+            <button
+              type="button"
+              className="text-action"
+              title="Set every count to 0, then type in what you own"
+              onClick={onZeroAll}
+            >
+              All counts to 0
+            </button>
+          ) : null}
           <button
             type="button"
             className="text-action"
@@ -235,7 +248,8 @@ export function InventoryList({
         </div>
       </div>
       <p className="section-subhead">
-        What you have to work with. Tap a brand to load the standard pieces.
+        A brand starts at 1 of each piece. Set the real counts (or tap "All
+        counts to 0" first and type in only what you own).
       </p>
       <InventoryFilters active={filter} counts={counts} onChange={setFilter} />
       <div className="card" ref={cardRef}>

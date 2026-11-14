@@ -446,9 +446,11 @@ function LayoutCard({
       </div>
 
       {suggestion.buildable ? (
-        <button type="button" className="btn layout-card-build">
-          Build this
-        </button>
+        <p className="layout-card-build-note">
+          Your totals cover this one. Lay it out on the floor before you fix
+          anything down: this guide counts length and curve, it does not
+          draw the plan.
+        </p>
       ) : (
         <div className="layout-card-shop">
           <button
@@ -677,8 +679,10 @@ export function LayoutSuggester({ open, inventory, onClose }: Props) {
         <div className="layout-suggester-head">
           <h2>What can I build?</h2>
           <p className="hint">
-            Based on the track in your inventory. We'll show what you can
-            build today and what you're close to.
+            A rough guide from the totals in your box (how much straight,
+            how much curve, how many turnouts). It does not check that the
+            pieces close into a loop: for an exact plan, use "Show loops I
+            can build" on the main page.
           </p>
         </div>
 

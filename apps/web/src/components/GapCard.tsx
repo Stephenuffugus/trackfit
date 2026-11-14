@@ -84,7 +84,7 @@ export function GapCard({
 
   return (
     <section className="app-section">
-      <p className="label">Gap to fill</p>
+      <p className="label">Or · Fill one gap</p>
       <div className="card">
         <div className="gap-photo-area">
           <PhotoButton

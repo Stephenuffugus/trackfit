@@ -20,14 +20,13 @@ export function Header({ inventory }: HeaderProps = {}) {
   return (
     <header className="app-header">
       <div className="app-header__row">
-        <p className="eyebrow">Sectional Track Solver</p>
+        <p className="eyebrow">For model railroaders</p>
         <SettingsMenu inventory={inventory ?? []} />
       </div>
       <h1>Trackfit</h1>
       <p className="tagline">
-        Tell it what's in your box and the gap you're trying to fill. It'll
-        find every combination of pieces that fits — exactly or within
-        tolerance.
+        Tell it what track you own. It shows the loops you can build from
+        your own box, and which pieces fill an awkward gap.
       </p>
     </header>
   );

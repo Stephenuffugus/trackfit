@@ -6,33 +6,52 @@ interface Props {
   onSelect: (system: TrackSystem) => void;
 }
 
+const SCALE_ORDER = ["G", "O", "S", "HO", "OO", "TT", "N", "Z"];
+
 /**
- * Loads every track system from the library package and renders a row of
- * chips. Systems whose data_quality is "unverified-draft" carry a small
- * "DRAFT" badge so the user knows the lengths haven't been triple-checked
- * against the manufacturer's catalog yet.
+ * Brand picker. A native select, grouped by scale: on a phone it opens the
+ * system's own large, scrollable list, and the whole choice takes one row
+ * instead of a screen of buttons.
  */
 export function PresetChips({ activeId, onSelect }: Props) {
   const systems = listSystems();
+  const scales = [...new Set(systems.map((s) => s.scale as string))].sort(
+    (a, b) => (SCALE_ORDER.indexOf(a) + 99) % 99 - (SCALE_ORDER.indexOf(b) + 99) % 99,
+  );
   return (
-    <div className="chips" id="presetChips">
-      {systems.map((sys) => {
-        const isDraft = sys.data_quality === "unverified-draft";
-        const isActive = sys.id === activeId;
-        return (
-          <button
-            key={sys.id}
-            className={`chip${isActive ? " active" : ""}`}
-            data-id={sys.id}
-            type="button"
-            onClick={() => onSelect(sys)}
-            title={isDraft ? sys.data_quality_note ?? "Draft data" : undefined}
-          >
-            <span>{sys.name}</span>
-            {isDraft ? <span className="draft-badge">Draft</span> : null}
-          </button>
-        );
-      })}
+    <div className="brand-pick" id="presetChips">
+      <label className="brand-pick__label" htmlFor="brandSelect">
+        Which track do you have?
+      </label>
+      <select
+        id="brandSelect"
+        className="brand-pick__select"
+        value={activeId ?? ""}
+        onChange={(e) => {
+          const sys = systems.find((s) => s.id === e.target.value);
+          if (sys) onSelect(sys);
+        }}
+      >
+        <option value="" disabled>
+          Choose a brand…
+        </option>
+        {scales.map((scale) => (
+          <optgroup key={scale} label={`${scale} scale`}>
+            {systems
+              .filter((s) => s.scale === scale)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </optgroup>
+        ))}
+      </select>
+      <p className="brand-pick__note">
+        This loads every piece the brand makes. Then set how many of each you
+        own. Piece sizes come from the makers' published catalogues; if a fit
+        really matters, check one piece with a ruler.
+      </p>
     </div>
   );
 }

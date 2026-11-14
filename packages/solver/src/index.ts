@@ -20,3 +20,13 @@ export type {
 } from "./curve.js";
 
 export const IN_TO_MM = 25.4;
+
+export { findLoops, tracePlan } from "./loops.js";
+export type {
+  LoopPiece,
+  LoopUse,
+  LoopPlan,
+  LoopOptions,
+  LoopResult,
+  TracedSegment,
+} from "./loops.js";

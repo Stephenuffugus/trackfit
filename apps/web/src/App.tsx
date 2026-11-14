@@ -16,6 +16,7 @@ import { ResultsList, type ResultsState } from "./components/ResultsList";
 import { PhotoModal } from "./components/PhotoModal";
 import { GapMeasureOverlay } from "./components/measure/GapMeasureOverlay";
 import { LayoutSuggester } from "./components/LayoutSuggester";
+import { LoopBuilder } from "./components/LoopBuilder";
 import { Onboarding } from "./components/Onboarding";
 import { StorageWarningToast } from "./components/StorageWarningToast";
 import { UndoToast } from "./components/UndoToast";
@@ -655,7 +656,7 @@ export default function App() {
         <Header inventory={inventory} />
 
         <section className="app-section">
-          <p className="label">Load a track system</p>
+          <p className="label">Step 1 · Your track</p>
           <PresetChips
             activeId={activePresetId}
             onSelect={(sys) => loadPreset(sys)}
@@ -677,6 +678,12 @@ export default function App() {
           onAdd={add}
           onReset={handleReset}
           onShowIntro={handleShowIntro}
+          onZeroAll={() =>
+            resetInventory(
+              inventory.map((r) => ({ ...r, qty: 0 })),
+              "Set every count to 0.",
+            )
+          }
         />
 
         {showScaleNotice ? (
@@ -694,6 +701,8 @@ export default function App() {
             </button>
           </p>
         ) : null}
+
+        <LoopBuilder inventory={inventory} unit={unit} />
 
         <GapCard
           gapPhoto={gapPhoto}
@@ -723,7 +732,7 @@ export default function App() {
             className="btn layout-suggester-cta"
             onClick={() => setLayoutSuggesterOpen(true)}
           >
-            What can I build with my inventory? →
+            More layout ideas (a rough guide) →
           </button>
         </section>
 
@@ -733,7 +742,13 @@ export default function App() {
           flexCandidates={flexCandidates}
         />
 
-        <footer className="app-footer">TRACKFIT v0.3 · prototype</footer>
+        <footer className="app-footer">
+          <p>Trackfit · a Sky Wolf Studio tool</p>
+          <p>
+            Everything you enter stays on this device.{" "}
+            <a href="./privacy.html">Privacy</a>
+          </p>
+        </footer>
       </div>
 
       <PhotoModal
