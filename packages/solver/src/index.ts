@@ -31,3 +31,5 @@ export type {
   LoopShape,
   TracedSegment,
 } from "./loops.js";
+export { findCombinationsOneMaterial } from "./materials.js";
+export type { MaterialSolverResult } from "./materials.js";

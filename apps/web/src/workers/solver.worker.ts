@@ -17,7 +17,7 @@
  */
 
 import {
-  findCombinations,
+  findCombinationsOneMaterial,
   findCurveCombinations,
   type CurveInventoryItem,
   type CurveSolverResult,
@@ -82,7 +82,7 @@ ctx.addEventListener("message", (e: MessageEvent<SolverRequest>) => {
   try {
     const t0 = performance.now();
     if (req.kind === "straight") {
-      const result = findCombinations(req.items, req.target_mm, req.tolerance_mm);
+      const result = findCombinationsOneMaterial(req.items, req.target_mm, req.tolerance_mm);
       const out: SolverResponse = {
         id: req.id,
         ok: true,

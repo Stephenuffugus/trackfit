@@ -127,6 +127,13 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
     return (
       <section className="results" id="results">
         <p className="label">No exact fit · nearest options</p>
+        {(result as { mixedWouldFit?: boolean }).mixedWouldFit ? (
+          <p className="suggest-warning" role="note">
+            An exact fit exists only by mixing steel and nickel silver rail.
+            Trackfit keeps to one rail material per answer, because the
+            makers say not to mix them electrically.
+          </p>
+        ) : null}
         {result.bestUnder ? (
           <ResultCard
             solution={result.bestUnder}

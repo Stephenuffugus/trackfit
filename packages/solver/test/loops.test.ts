@@ -258,3 +258,16 @@ describe("flex track", () => {
     expect(r.reason).toMatch(/flex track/i);
   });
 });
+
+describe("big boxes (fast search)", () => {
+  it("the longest oval found is within half the odd pieces of the best possible", () => {
+    const inv: LoopPiece[] = [ezCurve(12), ezStraight(9, 31), ezStraight(6, 9), ezStraight(3, 5), ezStraight(1.5, 3)];
+    const r = findLoops(inv);
+    const oval = r.plans.filter((p) => p.shape === "oval").sort((a, b) => b.side_mm - a.side_mm)[0]!;
+    const total = inch(9 * 31 + 6 * 9 + 3 * 5 + 1.5 * 3);
+    const odd = inch(9 + 6 + 3 + 1.5);
+    expect(oval.side_mm).toBeGreaterThanOrEqual(total / 2 - odd / 2 - 1e-6);
+    closes(oval);
+    withinInventory(oval, inv);
+  });
+});

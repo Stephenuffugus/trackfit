@@ -32,6 +32,17 @@ export function UndoToast({
     setRemaining(durationSec);
   }, [toastId, durationSec]);
 
+  // Get out of the way: once you scroll on (more than a thumb's swipe), the
+  // toast goes, so it never sits over what you are reading.
+  useEffect(() => {
+    const start = window.scrollY;
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - start) > 120) onDismiss();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [toastId, onDismiss]);
+
   // 1Hz countdown.
   useEffect(() => {
     if (remaining <= 0) {

@@ -222,6 +222,26 @@ function symmetricStates(
     if (target !== undefined) push(target, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
   }
   if (sorted.length > 1) push(sorted[1]!, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
+  // Always try "every pair split down the middle" (all the halves), even
+  // if the sums list was cut short. With no table limit this bounds the
+  // miss: the side found is at most half the total length of the odd
+  // pieces (one of each kind with an odd count) short of the longest
+  // possible, because no side can exceed half of everything.
+  const allHalves = halves.reduce((s, h, i) => s + h * units[i]!, 0);
+  if (allHalves <= capA && !parent.has(allHalves)) {
+    // Rebuild its pick directly: all halves.
+    const a = allHalves;
+    const key = a + "," + a;
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push({ a, b: a, pa: halves.slice(), pb: halves.slice() });
+    }
+  } else if (allHalves <= capA) {
+    push(allHalves, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
+  }
+  for (const e of extras) {
+    if (allHalves + e.a <= capA && parent.has(allHalves)) push(allHalves, e);
+  }
   push(0, { a: 0, b: 0, pa: new Array(n).fill(0), pb: new Array(n).fill(0) });
   return out;
 }

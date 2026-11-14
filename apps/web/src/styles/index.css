@@ -2695,3 +2695,8 @@ html[data-large-text="true"] .wrap { zoom: 1.2; }
 .loop-card__second { width: 100%; margin: 0 0 12px; text-transform: none; letter-spacing: 0; font: 600 16px "IBM Plex Sans", sans-serif; }
 .loop-card__also { border-top: 1.5px dashed var(--rule); padding-top: 12px; margin: 0 0 12px; }
 .loop-builder__note { font-size: 16px; line-height: 1.45; margin: 14px 0 0; padding: 10px 12px; border-left: 4px solid var(--brass); background: var(--bg-elev); }
+/* Undo toast: a slim bar at the very bottom, clear of the page content. */
+.undo-toast { left: 16px; right: 16px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); justify-content: space-between; padding: 6px 8px 6px 14px; }
+.undo-toast__msg { font-size: 15px; }
+.undo-toast__action { min-height: 48px; }
+.wrap { padding-bottom: 120px; }

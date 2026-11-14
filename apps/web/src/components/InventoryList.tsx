@@ -82,7 +82,16 @@ export function InventoryList({
   onShowIntro,
   onZeroAll,
 }: Props) {
-  const [filter, setFilter] = useState<InventoryFilter>("all");
+  const [filter, setFilterRaw] = useState<InventoryFilter>("all");
+  // "I own" keeps the rows it showed when it was chosen, so a row does not
+  // vanish under your finger when its count reaches 0. Choosing the filter
+  // again refreshes the list.
+  const [ownedKeys, setOwnedKeys] = useState<Set<string> | null>(null);
+  const rowKey = (r: Row) => `${r.system_id ?? ""}|${r.label}`;
+  const setFilter = (f: InventoryFilter) => {
+    if (f === "owned") setOwnedKeys(new Set(rows.filter((r) => r.qty > 0).map(rowKey)));
+    setFilterRaw(f);
+  };
   const [pickerOpen, setPickerOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -129,9 +138,11 @@ export function InventoryList({
       .filter(
         ({ row }) =>
           filter === "all" ||
-          (filter === "owned" ? row.qty > 0 : bucketOf(row.kind) === filter),
+          (filter === "owned"
+            ? row.qty > 0 || (ownedKeys?.has(rowKey(row)) ?? false)
+            : bucketOf(row.kind) === filter),
       );
-  }, [rows, filter]);
+  }, [rows, filter, ownedKeys]);
 
   // Group the visible rows into the five accordion buckets.
   const groups = useMemo(() => {
