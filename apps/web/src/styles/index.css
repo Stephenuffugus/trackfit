@@ -2671,3 +2671,15 @@ input[type="number"] {
    column is max 720px, so a phone simply gets a longer page. */
 html[data-large-text="true"] .wrap { zoom: 1.2; }
 .onboarding-oval { display: block; margin: 8px auto 0; width: 160px; height: 160px; }
+.app-footer__tip { font-family: "IBM Plex Sans", sans-serif; font-size: 15px; line-height: 1.45; text-transform: none; letter-spacing: 0; }
+.inv-filter { min-height: 48px; }
+.marketplace-links__toggle, .layout-card-shop-toggle, .marketplace-links__list a, .layout-card-shop-list a {
+  min-height: 48px; display: inline-flex; align-items: center;
+}
+/* Printed plans carry the app's name. */
+@media print {
+  body.printing-plan .loop-card.print-me::after {
+    content: "Made with Trackfit, a Sky Wolf Studio tool. Check pieces fit before fixing track down.";
+    display: block; margin-top: 12px; font-size: 12pt; color: #4a5169;
+  }
+}

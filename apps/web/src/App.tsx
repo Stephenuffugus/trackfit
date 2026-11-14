@@ -658,7 +658,15 @@ export default function App() {
         <section className="app-section">
           <p className="label">Step 1 · Your track</p>
           <PresetChips
-            activeId={activePresetId}
+            activeId={
+              activePresetId ??
+              // After counts change the list no longer matches a fresh
+              // preset, but it is still that brand: keep it named.
+              (() => {
+                const ids = new Set(inventory.map((r) => r.system_id));
+                return ids.size === 1 ? ([...ids][0] ?? null) : null;
+              })()
+            }
             onSelect={(sys) => loadPreset(sys)}
           />
         </section>
@@ -743,6 +751,10 @@ export default function App() {
         />
 
         <footer className="app-footer">
+          <p className="app-footer__tip">
+            Save a backup of your list, print it, or make the text bigger:
+            tap the gear at the top of the page.
+          </p>
           <p>Trackfit · a Sky Wolf Studio tool</p>
           <p>
             Everything you enter stays on this device.{" "}
