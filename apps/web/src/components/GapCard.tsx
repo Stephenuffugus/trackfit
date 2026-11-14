@@ -80,7 +80,9 @@ export function GapCard({
   };
 
   const targetLabel =
-    gapShape === "straight" ? "Target length" : "Chord length";
+    gapShape === "straight"
+      ? "Length of the gap"
+      : "Straight line, rail end to rail end";
 
   return (
     <section className="app-section">

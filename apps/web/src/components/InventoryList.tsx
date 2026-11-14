@@ -279,9 +279,9 @@ export function InventoryList({
               </p>
               <ol className="inv-empty-state__list">
                 <li>
-                  <strong>Pick a brand</strong> at the top of this section
-                  to load every piece that brand makes (then set how many
-                  of each you actually own).
+                  <strong>Choose your brand</strong> in Step 1 above to
+                  load every piece that brand makes (then set how many of
+                  each you actually own).
                 </li>
                 <li>
                   <strong>Tap "Add piece"</strong> below to pick from a

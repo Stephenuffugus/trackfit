@@ -34,6 +34,7 @@ import {
   IN_TO_MM,
 } from "./lib/constants";
 import { formatLength, parseLengthExpression, unitSuffix } from "./lib/format";
+import { chordToCurveTarget } from "./lib/curve-gap";
 import { matchPresetId, presetToInventory, presetUnit } from "./lib/presets";
 import { distinctScales, formatScales } from "./lib/scale-check";
 import { isOnboarded, setOnboarded } from "./lib/prefs";
@@ -368,7 +369,11 @@ export default function App() {
     const tolVal = tolParsed?.valueInUnit ?? 0;
 
     if (!targetVal || targetVal <= 0) {
-      setResults({ kind: "empty", targetVal: 0 });
+      setResults({
+        kind: "message",
+        title: "How long is the gap?",
+        text: `Type the gap's length in the length box (in ${unit === "in" ? "inches" : "millimetres"}, or add "cm"), then try again.`,
+      });
       return;
     }
 
@@ -492,23 +497,25 @@ export default function App() {
       if (gapShape === "curve") {
         const arc = parseFloat(gapArcDegrees);
         if (!arc || Math.abs(arc) <= 0) {
-          // Curve gap with no arc set — treat as straight target so we still
-          // give the user *something* (rather than failing silently).
+          // Curved gap with no turn given: say so, and stop the clock
+          // that solve() already started.
           setSolving(false);
           inflightIdRef.current = null;
-          setResults({ kind: "empty", targetVal });
+          if (solveTickRef.current !== null) {
+            window.clearInterval(solveTickRef.current);
+            solveTickRef.current = null;
+          }
+          solveStartRef.current = null;
+          setSolveElapsedSec(null);
+          setResults({
+            kind: "message",
+            title: "How much does the gap turn?",
+            text: "For a curved gap, tap how much it turns (for example a twelfth of a circle, 30°) or type the degrees, then try again.",
+          });
           return;
         }
-        const arcRad = (arc * Math.PI) / 180;
-        // Lateral offset for a chord across an arc of θ centered on the
-        // chord midpoint: chord · (1 − cos θ) / 2. Sign matches the sign of
-        // the arc (positive = left turn, per the solver convention).
-        const lateral = (target_mm * (1 - Math.cos(arcRad))) / 2;
-        curveTarget = {
-          length_mm: target_mm,
-          lateral_offset_mm: lateral,
-          angle_degrees: arc,
-        };
+        // The user measures the chord (end to end) and the turn.
+        curveTarget = chordToCurveTarget(target_mm, arc);
       } else {
         // offset / S-curve: net angle 0, lateral = user input (in display unit)
         const offsetVal = parseFloat(gapOffset) || 0;

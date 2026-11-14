@@ -201,11 +201,7 @@ function LoopCard({
           ))}
         </tbody>
       </table>
-      <p className="loop-card__how">
-        Lay half the straights in a row, then curves until the track has
-        turned right round, then the rest of the straights, then the rest of the
-        curves. It closes on the first piece.
-      </p>
+      <RunningOrder plan={plan} />
       <button type="button" className="btn loop-card__print" onClick={onPrint}>
         Print this plan
       </button>
@@ -275,5 +271,54 @@ export function LoopDrawing({ plan, size = 320 }: { plan: LoopPlan; size?: numbe
         <path key={`t${i}`} d={d} className="loop-drawing__tick" strokeWidth={stroke * 0.22} />
       ))}
     </svg>
+  );
+}
+
+/** Group a run of pieces: "4 × S248, 1 × S62". */
+function runText(run: LoopPlan["sequence"]): string {
+  const parts: { label: string; n: number }[] = [];
+  for (const p of run) {
+    const last = parts[parts.length - 1];
+    if (last && last.label === p.label) last.n++;
+    else parts.push({ label: p.label, n: 1 });
+  }
+  return parts.map((x) => `${x.n} × ${x.label}`).join(", ");
+}
+
+/**
+ * The order to lay the pieces, in four legs. Start anywhere on the floor;
+ * after the last leg the track meets the first piece.
+ */
+function RunningOrder({ plan }: { plan: LoopPlan }) {
+  const seq = plan.sequence;
+  const legs: { name: string; run: LoopPlan["sequence"] }[] = [];
+  let i = 0;
+  const take = (pred: (k: string) => boolean) => {
+    const run: LoopPlan["sequence"] = [];
+    while (i < seq.length && pred(seq[i]!.kind)) run.push(seq[i++]!);
+    return run;
+  };
+  const sideA = take((k) => k === "straight");
+  const end1 = take((k) => k === "curve");
+  const sideB = take((k) => k === "straight");
+  const end2 = take((k) => k === "curve");
+  if (sideA.length) legs.push({ name: "First side", run: sideA });
+  legs.push({ name: plan.shape === "circle" ? "First half circle" : "First end (curves)", run: end1 });
+  if (sideB.length) legs.push({ name: "Second side", run: sideB });
+  legs.push({ name: plan.shape === "circle" ? "Second half circle" : "Second end (curves)", run: end2 });
+  return (
+    <div className="loop-card__order">
+      <p className="loop-card__order-title">Lay them in this order</p>
+      <ol>
+        {legs.map((l, k) => (
+          <li key={k}>
+            <strong>{l.name}:</strong> {runText(l.run)}
+          </li>
+        ))}
+      </ol>
+      <p className="loop-card__how">
+        All curves turn the same way. The last piece meets the first.
+      </p>
+    </div>
   );
 }

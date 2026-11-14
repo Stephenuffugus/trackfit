@@ -13,6 +13,7 @@ import { ResultCard } from "./ResultCard";
 export type ResultsState =
   | { kind: "idle" }
   | { kind: "empty"; targetVal: number }
+  | { kind: "message"; title: string; text: string }
   | {
       kind: "results";
       mode: "straight";
@@ -71,6 +72,15 @@ export function ResultsList({ state, unit, flexCandidates }: Props) {
           <br />
           Try adding pieces or shortening the target.
         </div>
+      </section>
+    );
+  }
+
+  if (state.kind === "message") {
+    return (
+      <section className="results" id="results" role="status">
+        <p className="label">{state.title}</p>
+        <div className="empty-state">{state.text}</div>
       </section>
     );
   }

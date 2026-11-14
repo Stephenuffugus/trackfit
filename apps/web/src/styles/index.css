@@ -2683,3 +2683,7 @@ html[data-large-text="true"] .wrap { zoom: 1.2; }
     display: block; margin-top: 12px; font-size: 12pt; color: #4a5169;
   }
 }
+.loop-card__order { margin: 0 0 10px; }
+.loop-card__order-title { font-weight: 700; font-size: 16px; margin: 0 0 6px; }
+.loop-card__order ol { margin: 0 0 8px; padding-left: 24px; font-size: 16px; line-height: 1.45; }
+.loop-card__order li { margin-bottom: 4px; }
